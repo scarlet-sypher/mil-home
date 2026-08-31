@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int       @id @default(autoincrement())
+  email          String    @unique
+  passwordHash   String
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  sessions       Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@map("sessions")
+}
+
+model Quarter {
+  id          Int         @id @default(autoincrement())
+  quarterNo   String      @unique
+  colony      String
+  qtype       String
+  entitlement String?
+  status      String      @default("VACANT")
+  condition   String      @default("FIT")
+  allotments  Allotment[]
+  complaints  Complaint[]
+  vacations   Vacation[]
+
+  @@map("quarters")
+}
+
+model Applicant {
+  id            Int         @id @default(autoincrement())
+  serviceNo     String
+  name          String
+  rank          String
+  unit          String
+  seniorityDate DateTime
+  category      String      @default("NORMAL")
+  eligibleType  String
+  status        String      @default("WAITING")
+  allotments    Allotment[]
+
+  @@map("applicants")
+}
+
+model Allotment {
+  id              Int       @id @default(autoincrement())
+  applicantId     Int
+  applicant       Applicant @relation(fields: [applicantId], references: [id])
+  quarterId       Int
+  quarter         Quarter   @relation(fields: [quarterId], references: [id])
+  committeeStatus String    @default("PENDING")
+  authorityStatus String    @default("PENDING")
+  orderRef        String?
+  createdAt       DateTime  @default(now())
+
+  @@map("allotments")
+}
+
+model Complaint {
+  id          Int       @id @default(autoincrement())
+  quarterId   Int
+  quarter     Quarter   @relation(fields: [quarterId], references: [id])
+  resident    String
+  category    String
+  description String
+  assignedTo  String?
+  status      String    @default("OPEN")
+  createdAt   DateTime  @default(now())
+  closedAt    DateTime?
+
+  @@map("complaints")
+}
+
+model Vacation {
+  id               Int       @id @default(autoincrement())
+  quarterId        Int
+  quarter          Quarter   @relation(fields: [quarterId], references: [id])
+  occupant         String
+  requestDate      DateTime  @default(now())
+  inspectionStatus String    @default("PENDING")
+  defects          String?
+  clearanceStatus  String    @default("PENDING")
+  certificateRef   String?
+
+  @@map("vacations")
+}
+
+model AuditEvent {
+  id        Int      @id @default(autoincrement())
+  actor     String
+  action    String
+  entity    String
+  entityId  Int?
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@map("audit_events")
+}
