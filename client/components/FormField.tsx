@@ -16,7 +16,7 @@ export function FormField({ label, error, rightSlot, id, className = "", ...prop
       <div className="relative">
         <input
           id={fieldId}
-          className={`w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-navy-600 focus:outline-none focus:ring-1 focus:ring-navy-600 ${className}`}
+          className={`w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-navy-700 focus:outline-none focus:ring-1 focus:ring-navy-700 ${className}`}
           {...props}
         />
         {rightSlot && <div className="absolute inset-y-0 right-2 flex items-center">{rightSlot}</div>}
