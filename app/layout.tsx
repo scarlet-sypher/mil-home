@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-export const metadata = {
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+
+export const metadata: Metadata = {
   title: "MIL-HOME",
   description: "Military Station Housing & Estate Management",
 };
@@ -8,7 +12,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={`${inter.variable} bg-slate-50 text-slate-900`}>{children}</body>
     </html>
   );
 }
