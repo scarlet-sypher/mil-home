@@ -1,3 +1,7 @@
-export default function Page() {
-  return <div>MIL-HOME scaffold is running.</div>;
+import { redirect } from "next/navigation";
+import { getSessionUser } from "@/server/lib/session";
+
+export default async function Page() {
+  const user = await getSessionUser();
+  redirect(user ? "/home" : "/login");
 }
