@@ -55,7 +55,7 @@ export function SignupPage() {
         <div className="flex flex-col items-center gap-2 text-navy-900">
           <Shield size={32} />
           <h1 className="text-xl font-semibold">Create an account</h1>
-          <p className="text-center text-sm text-slate-500">MIL-HOME Station Housing &amp; Estate Management</p>
+          <p className="text-center text-sm text-slate-500">MIL-HOME Station Housing</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
