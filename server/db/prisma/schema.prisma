@@ -31,11 +31,26 @@ model Session {
 }
 
 model Quarter {
-  id         Int         @id @default(autoincrement())
-  quarterNo  String      @unique
-  colony     String
-  status     String      @default("VACANT")
-  condition  String      @default("FIT")
+  id        Int    @id @default(autoincrement())
+  quarterNo String @unique
+  colony    String
+  status    String @default("VACANT") // VACANT | OCCUPIED | RESERVED | UNDER_MAINTENANCE
+  condition String @default("FIT") // FIT | UNFIT
+
+  // Direct occupant fields, filled only via the Quarters-tab "Occupied" form
+  serviceNo String?
+  rank      String?
+  name      String?
+  unit      String?
+
+  // Maintenance workflow
+  statusBeforeMaintenance    String?
+  maintenanceStatus          String? // null | IN_PROGRESS | COMPLETED
+  maintenanceRemark          String?
+  maintenanceCompletedRemark String?
+  maintenanceStartedAt       DateTime?
+  maintenanceEndedAt         DateTime?
+
   allotments Allotment[]
   complaints Complaint[]
   vacations  Vacation[]

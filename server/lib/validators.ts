@@ -26,11 +26,46 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
-export const quarterSchema = z.object({
+export const conditionEnum = z.enum(["FIT", "UNFIT"]);
+
+export const quarterVacantCreateSchema = z.object({
   quarterNo: z.string().trim().min(1, "Quarter number is required"),
   colony: z.string().trim().min(1, "Quarter location is required"),
+  condition: conditionEnum,
 });
-export type QuarterInput = z.infer<typeof quarterSchema>;
+export type QuarterVacantCreateInput = z.infer<typeof quarterVacantCreateSchema>;
+
+export const quarterOccupiedCreateSchema = z.object({
+  serviceNo: z.string().trim().min(1, "Army number is required"),
+  rank: z.string().trim().min(1, "Rank is required"),
+  name: z.string().trim().min(1, "Name is required"),
+  unit: z.string().trim().min(1, "Unit is required"),
+  quarterNo: z.string().trim().min(1, "Quarter number is required"),
+  colony: z.string().trim().min(1, "Quarter location is required"),
+  condition: conditionEnum,
+});
+export type QuarterOccupiedCreateInput = z.infer<typeof quarterOccupiedCreateSchema>;
+
+export const quarterUpdateSchema = z.object({
+  quarterNo: z.string().trim().min(1).optional(),
+  colony: z.string().trim().min(1).optional(),
+  condition: conditionEnum.optional(),
+  serviceNo: z.string().trim().min(1).optional(),
+  rank: z.string().trim().min(1).optional(),
+  name: z.string().trim().min(1).optional(),
+  unit: z.string().trim().min(1).optional(),
+});
+export type QuarterUpdateInput = z.infer<typeof quarterUpdateSchema>;
+
+export const maintenanceStartSchema = z.object({
+  remark: z.string().trim().min(1, "Maintenance remark is required"),
+});
+export type MaintenanceStartInput = z.infer<typeof maintenanceStartSchema>;
+
+export const maintenanceCompleteSchema = z.object({
+  remark: z.string().trim().optional().default(""),
+});
+export type MaintenanceCompleteInput = z.infer<typeof maintenanceCompleteSchema>;
 
 export const applicantSchema = z.object({
   serviceNo: z.string().trim().min(1, "Army number is required"),
