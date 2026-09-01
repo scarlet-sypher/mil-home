@@ -15,7 +15,7 @@ type Applicant = {
   name: string;
   rank: string;
   unit: string;
-  seniorityDate: string;
+  seniorityDate: Date;
   category: string;
   eligibleType: string;
   status: string;
