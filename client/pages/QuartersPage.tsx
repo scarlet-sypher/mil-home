@@ -8,6 +8,7 @@ import { Button } from "@/client/components/Button";
 import { FormField } from "@/client/components/FormField";
 import { DataTable } from "@/client/components/DataTable";
 import { StatusBadge } from "@/client/components/StatusBadge";
+import { ConfirmDialog } from "@/client/components/ConfirmDialog";
 
 type Quarter = {
   id: number;
@@ -38,6 +39,12 @@ type EditDraft = {
   name: string;
   unit: string;
 };
+
+type PendingAction =
+  | { type: "delete"; id: number }
+  | { type: "maintenance-start"; id: number }
+  | { type: "maintenance-complete"; id: number }
+  | null;
 
 const EMPTY_VACANT_FORM = { quarterNo: "", colony: "", condition: "FIT" };
 const EMPTY_OCCUPIED_FORM = { serviceNo: "", rank: "", name: "", unit: "", quarterNo: "", colony: "", condition: "FIT" };
@@ -77,6 +84,9 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
     name: "",
     unit: "",
   });
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [dialogRemark, setDialogRemark] = useState("");
+  const [pageError, setPageError] = useState("");
 
   async function handleVacantSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -155,7 +165,7 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
 
     if (!response.ok) {
       const data = await response.json();
-      window.alert(data.error ?? "Could not save changes.");
+      setPageError(data.error ?? "Could not save changes.");
       return;
     }
 
@@ -163,51 +173,66 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
     router.refresh();
   }
 
-  async function handleDelete(id: number) {
-    if (!window.confirm("Delete this quarter record? This cannot be undone.")) return;
-
-    const response = await fetch(`/api/quarters/${id}`, { method: "DELETE" });
-    if (!response.ok) {
-      const data = await response.json();
-      window.alert(data.error ?? "Could not delete this record.");
-      return;
-    }
-    router.refresh();
+  function requestDelete(id: number) {
+    setPageError("");
+    setPendingAction({ type: "delete", id });
   }
 
-  async function handleStartMaintenance(id: number) {
-    const remark = window.prompt("What maintenance needs to be done for this quarter?");
-    if (remark === null || remark.trim() === "") return;
-
-    const response = await fetch(`/api/quarters/${id}/maintenance/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ remark }),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      window.alert(data.error ?? "Could not start maintenance.");
-      return;
-    }
-    router.refresh();
+  function requestStartMaintenance(id: number) {
+    setPageError("");
+    setDialogRemark("");
+    setPendingAction({ type: "maintenance-start", id });
   }
 
-  async function handleCompleteMaintenance(id: number) {
-    if (!window.confirm("Mark this maintenance as completed?")) return;
-    const remark = window.prompt("Completion remark (optional):") ?? "";
+  function requestCompleteMaintenance(id: number) {
+    setPageError("");
+    setDialogRemark("");
+    setPendingAction({ type: "maintenance-complete", id });
+  }
 
-    const response = await fetch(`/api/quarters/${id}/maintenance/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ remark }),
-    });
+  function closeDialog() {
+    setPendingAction(null);
+    setDialogRemark("");
+  }
 
-    if (!response.ok) {
-      const data = await response.json();
-      window.alert(data.error ?? "Could not complete maintenance.");
-      return;
+  async function confirmPendingAction() {
+    if (!pendingAction) return;
+
+    if (pendingAction.type === "delete") {
+      const response = await fetch(`/api/quarters/${pendingAction.id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const data = await response.json();
+        setPageError(data.error ?? "Could not delete this record.");
+        closeDialog();
+        return;
+      }
+    } else if (pendingAction.type === "maintenance-start") {
+      const response = await fetch(`/api/quarters/${pendingAction.id}/maintenance/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ remark: dialogRemark }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        setPageError(data.error ?? "Could not start maintenance.");
+        closeDialog();
+        return;
+      }
+    } else if (pendingAction.type === "maintenance-complete") {
+      const response = await fetch(`/api/quarters/${pendingAction.id}/maintenance/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ remark: dialogRemark }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        setPageError(data.error ?? "Could not complete maintenance.");
+        closeDialog();
+        return;
+      }
     }
+
+    closeDialog();
     router.refresh();
   }
 
@@ -219,7 +244,7 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
   function actionCell(q: Quarter, onEdit?: () => void) {
     if (q.maintenanceStatus === "COMPLETED") {
       return (
-        <Button variant="danger" onClick={() => handleDelete(q.id)}>
+        <Button variant="danger" onClick={() => requestDelete(q.id)}>
           <Trash2 size={14} />
           Delete
         </Button>
@@ -244,10 +269,10 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
         <Button variant="secondary" onClick={onEdit ?? (() => startEdit(q))}>
           <Pencil size={14} />
         </Button>
-        <Button variant="danger" onClick={() => handleDelete(q.id)}>
+        <Button variant="danger" onClick={() => requestDelete(q.id)}>
           <Trash2 size={14} />
         </Button>
-        <Button variant="secondary" onClick={() => handleStartMaintenance(q.id)}>
+        <Button variant="secondary" onClick={() => requestStartMaintenance(q.id)}>
           <Wrench size={14} />
           Maintenance
         </Button>
@@ -258,13 +283,17 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <Header />
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+      <main className="mx-auto max-w-screen-2xl space-y-6 px-4 py-8 sm:px-6 lg:px-10">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Quarters</h1>
           <p className="text-sm text-slate-500">Quarters Vacant/Occupied</p>
         </div>
 
-        <div className="flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-white p-1">
+        {pageError && (
+          <p className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{pageError}</p>
+        )}
+
+        <div className="mx-auto flex w-fit flex-wrap gap-1 rounded-lg border border-slate-200 bg-white p-1">
           {(
             [
               ["ALL", "Show All"],
@@ -488,7 +517,7 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
                 header: "Maintenance Status",
                 render: (q: Quarter) =>
                   q.maintenanceStatus === "IN_PROGRESS" ? (
-                    <Button variant="secondary" onClick={() => handleCompleteMaintenance(q.id)}>
+                    <Button variant="secondary" onClick={() => requestCompleteMaintenance(q.id)}>
                       In Progress
                     </Button>
                   ) : (
@@ -505,6 +534,46 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
           />
         )}
       </main>
+
+      {pendingAction?.type === "delete" && (
+        <ConfirmDialog
+          title="Delete Quarter"
+          message="Delete this quarter record? This cannot be undone."
+          confirmLabel="Delete"
+          confirmVariant="danger"
+          onConfirm={confirmPendingAction}
+          onCancel={closeDialog}
+        />
+      )}
+
+      {pendingAction?.type === "maintenance-start" && (
+        <ConfirmDialog
+          title="Start Maintenance"
+          message="What maintenance needs to be done for this quarter?"
+          confirmLabel="Start Maintenance"
+          showInput
+          inputLabel="Maintenance remark"
+          inputValue={dialogRemark}
+          onInputChange={setDialogRemark}
+          inputRequired
+          onConfirm={confirmPendingAction}
+          onCancel={closeDialog}
+        />
+      )}
+
+      {pendingAction?.type === "maintenance-complete" && (
+        <ConfirmDialog
+          title="Complete Maintenance"
+          message="Mark this maintenance as completed. Add a completion remark if you have one."
+          confirmLabel="Mark Completed"
+          showInput
+          inputLabel="Completion remark (optional)"
+          inputValue={dialogRemark}
+          onInputChange={setDialogRemark}
+          onConfirm={confirmPendingAction}
+          onCancel={closeDialog}
+        />
+      )}
     </div>
   );
 }
