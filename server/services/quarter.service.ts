@@ -1,7 +1,17 @@
 import { prisma } from "@/server/db/client";
 
 export async function listQuarters() {
-  return prisma.quarter.findMany({ orderBy: [{ colony: "asc" }, { quarterNo: "asc" }] });
+  return prisma.quarter.findMany({
+    orderBy: [{ colony: "asc" }, { quarterNo: "asc" }],
+    include: {
+      allotments: {
+        where: { authorityStatus: "APPROVED" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        include: { applicant: true },
+      },
+    },
+  });
 }
 
 export async function listAvailableQuarters() {

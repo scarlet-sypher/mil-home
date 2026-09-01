@@ -10,13 +10,14 @@ import { StatusBadge } from "@/client/components/StatusBadge";
 
 type Applicant = { id: number; name: string; serviceNo: string };
 type Quarter = { id: number; quarterNo: string };
+type AllotmentApplicant = { serviceNo: string; rank: string; name: string; unit: string };
+type AllotmentQuarter = { colony: string; quarterNo: string };
 type Allotment = {
   id: number;
-  committeeStatus: string;
   authorityStatus: string;
   orderRef: string | null;
-  applicant: Applicant;
-  quarter: Quarter;
+  applicant: AllotmentApplicant;
+  quarter: AllotmentQuarter;
 };
 
 export function AllotmentsPage({
@@ -67,7 +68,10 @@ export function AllotmentsPage({
     <div className="min-h-screen bg-slate-50">
       <Header />
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-        <h1 className="text-2xl font-semibold text-slate-900">Allotments</h1>
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Allotments</h1>
+          <p className="text-sm text-slate-500">Allotment Workflow</p>
+        </div>
 
         <form onSubmit={handleCreate} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-3">
           <div className="flex flex-col gap-1">
@@ -112,13 +116,17 @@ export function AllotmentsPage({
 
         <DataTable
           columns={[
-            { header: "Applicant", render: (a: Allotment) => `${a.applicant.name} (${a.applicant.serviceNo})` },
-            { header: "Quarter", render: (a: Allotment) => a.quarter.quarterNo },
-            { header: "Committee", render: (a: Allotment) => <StatusBadge status={a.committeeStatus} /> },
+            { header: "S/No.", render: (_a: Allotment, i: number) => i + 1 },
+            { header: "Army No.", render: (a: Allotment) => a.applicant.serviceNo },
+            { header: "Rank", render: (a: Allotment) => a.applicant.rank },
+            { header: "Name", render: (a: Allotment) => a.applicant.name },
+            { header: "Unit", render: (a: Allotment) => a.applicant.unit },
+            { header: "Qtr Loc", render: (a: Allotment) => a.quarter.colony },
+            { header: "Qtr No.", render: (a: Allotment) => a.quarter.quarterNo },
             { header: "Authority", render: (a: Allotment) => <StatusBadge status={a.authorityStatus} /> },
-            { header: "Order Ref.", render: (a: Allotment) => a.orderRef ?? "—" },
+            { header: "Order", render: (a: Allotment) => a.orderRef ?? "—" },
             {
-              header: "",
+              header: "Action",
               render: (a: Allotment) =>
                 a.authorityStatus !== "APPROVED" ? (
                   <Button variant="secondary" onClick={() => handleApprove(a.id)}>

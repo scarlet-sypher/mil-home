@@ -4,23 +4,33 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/client/components/Header";
 import { Button } from "@/client/components/Button";
-import { FormField } from "@/client/components/FormField";
 import { DataTable } from "@/client/components/DataTable";
 import { StatusBadge } from "@/client/components/StatusBadge";
 
 type Quarter = { id: number; quarterNo: string };
+type PickerApplicant = { id: number; name: string; serviceNo: string };
+type VacationApplicant = { serviceNo: string; rank: string; name: string; unit: string };
+type VacationQuarter = { colony: string; quarterNo: string };
 type Vacation = {
   id: number;
-  occupant: string;
   inspectionStatus: string;
   clearanceStatus: string;
   defects: string | null;
-  quarter: Quarter;
+  applicant: VacationApplicant;
+  quarter: VacationQuarter;
 };
 
-export function VacationsPage({ vacations, quarters }: { vacations: Vacation[]; quarters: Quarter[] }) {
+export function VacationsPage({
+  vacations,
+  quarters,
+  applicants,
+}: {
+  vacations: Vacation[];
+  quarters: Quarter[];
+  applicants: PickerApplicant[];
+}) {
   const router = useRouter();
-  const [form, setForm] = useState({ quarterId: "", occupant: "" });
+  const [form, setForm] = useState({ quarterId: "", applicantId: "" });
   const [defectsDraft, setDefectsDraft] = useState<Record<number, string>>({});
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -33,7 +43,7 @@ export function VacationsPage({ vacations, quarters }: { vacations: Vacation[]; 
     const response = await fetch("/api/vacations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, quarterId: Number(form.quarterId) }),
+      body: JSON.stringify({ quarterId: Number(form.quarterId), applicantId: Number(form.applicantId) }),
     });
 
     if (!response.ok) {
@@ -43,7 +53,7 @@ export function VacationsPage({ vacations, quarters }: { vacations: Vacation[]; 
       return;
     }
 
-    setForm({ quarterId: "", occupant: "" });
+    setForm({ quarterId: "", applicantId: "" });
     setSubmitting(false);
     router.refresh();
   }
@@ -61,7 +71,10 @@ export function VacationsPage({ vacations, quarters }: { vacations: Vacation[]; 
     <div className="min-h-screen bg-slate-50">
       <Header />
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-        <h1 className="text-2xl font-semibold text-slate-900">Vacations</h1>
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Vacations</h1>
+          <p className="text-sm text-slate-500">Quarter Vacations &amp; Clearance</p>
+        </div>
 
         <form onSubmit={handleSubmit} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-3">
           <div className="flex flex-col gap-1">
@@ -80,7 +93,22 @@ export function VacationsPage({ vacations, quarters }: { vacations: Vacation[]; 
               ))}
             </select>
           </div>
-          <FormField label="Occupant" name="occupant" value={form.occupant} onChange={(e) => setForm({ ...form, occupant: e.target.value })} required />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700">Occupant</label>
+            <select
+              value={form.applicantId}
+              onChange={(e) => setForm({ ...form, applicantId: e.target.value })}
+              required
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select occupant</option>
+              {applicants.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.serviceNo})
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-end">
             <Button type="submit" disabled={submitting}>
               Request Vacation
@@ -91,12 +119,18 @@ export function VacationsPage({ vacations, quarters }: { vacations: Vacation[]; 
 
         <DataTable
           columns={[
-            { header: "Quarter", render: (v: Vacation) => v.quarter.quarterNo },
-            { header: "Occupant", render: (v: Vacation) => v.occupant },
+            { header: "S/No.", render: (_v: Vacation, i: number) => i + 1 },
+            { header: "Army No.", render: (v: Vacation) => v.applicant.serviceNo },
+            { header: "Rank", render: (v: Vacation) => v.applicant.rank },
+            { header: "Name", render: (v: Vacation) => v.applicant.name },
+            { header: "Unit", render: (v: Vacation) => v.applicant.unit },
+            { header: "Qtr Loc", render: (v: Vacation) => v.quarter.colony },
+            { header: "Qtr No.", render: (v: Vacation) => v.quarter.quarterNo },
             { header: "Inspection", render: (v: Vacation) => <StatusBadge status={v.inspectionStatus} /> },
+            { header: "Defects", render: (v: Vacation) => (v.inspectionStatus === "PENDING" ? "—" : v.defects ?? "None") },
             { header: "Clearance", render: (v: Vacation) => <StatusBadge status={v.clearanceStatus} /> },
             {
-              header: "Defects / Inspect",
+              header: "Action",
               render: (v: Vacation) =>
                 v.inspectionStatus === "PENDING" ? (
                   <div className="flex items-center gap-2">
@@ -111,9 +145,7 @@ export function VacationsPage({ vacations, quarters }: { vacations: Vacation[]; 
                       Submit
                     </Button>
                   </div>
-                ) : (
-                  v.defects ?? "None"
-                ),
+                ) : null,
             },
           ]}
           rows={vacations}

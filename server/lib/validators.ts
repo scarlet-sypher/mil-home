@@ -42,6 +42,7 @@ export const applicantSchema = z.object({
   seniorityDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Enter a valid date"),
   category: z.string().trim().min(1).default("NORMAL"),
   eligibleType: z.string().trim().min(1, "Eligible type is required"),
+  remarks: z.string().trim().optional(),
 });
 export type ApplicantInput = z.infer<typeof applicantSchema>;
 
@@ -53,7 +54,7 @@ export type AllotmentCreateInput = z.infer<typeof allotmentCreateSchema>;
 
 export const complaintCreateSchema = z.object({
   quarterId: z.number().int().positive(),
-  resident: z.string().trim().min(1, "Resident name is required"),
+  applicantId: z.number().int().positive(),
   category: z.string().trim().min(1, "Category is required"),
   description: z.string().trim().min(1, "Description is required"),
 });
@@ -61,7 +62,7 @@ export type ComplaintCreateInput = z.infer<typeof complaintCreateSchema>;
 
 export const vacationCreateSchema = z.object({
   quarterId: z.number().int().positive(),
-  occupant: z.string().trim().min(1, "Occupant name is required"),
+  applicantId: z.number().int().positive(),
 });
 export type VacationCreateInput = z.infer<typeof vacationCreateSchema>;
 

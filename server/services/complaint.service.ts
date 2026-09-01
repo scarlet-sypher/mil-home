@@ -1,19 +1,22 @@
 import { prisma } from "@/server/db/client";
 
 export async function listComplaints() {
-  return prisma.complaint.findMany({ include: { quarter: true }, orderBy: { createdAt: "desc" } });
+  return prisma.complaint.findMany({
+    include: { quarter: true, applicant: true },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
 export async function createComplaint(input: {
   quarterId: number;
-  resident: string;
+  applicantId: number;
   category: string;
   description: string;
 }) {
   return prisma.complaint.create({
     data: {
       quarterId: input.quarterId,
-      resident: input.resident,
+      applicantId: input.applicantId,
       category: input.category,
       description: input.description,
       status: "OPEN",

@@ -54,8 +54,11 @@ model Applicant {
   seniorityDate DateTime
   category      String      @default("NORMAL")
   eligibleType  String
+  remarks       String?
   status        String      @default("WAITING")
   allotments    Allotment[]
+  complaints    Complaint[]
+  vacations     Vacation[]
 
   @@map("applicants")
 }
@@ -78,7 +81,8 @@ model Complaint {
   id          Int       @id @default(autoincrement())
   quarterId   Int
   quarter     Quarter   @relation(fields: [quarterId], references: [id])
-  resident    String
+  applicantId Int
+  applicant   Applicant @relation(fields: [applicantId], references: [id])
   category    String
   description String
   assignedTo  String?
@@ -93,7 +97,8 @@ model Vacation {
   id               Int       @id @default(autoincrement())
   quarterId        Int
   quarter          Quarter   @relation(fields: [quarterId], references: [id])
-  occupant         String
+  applicantId      Int
+  applicant        Applicant @relation(fields: [applicantId], references: [id])
   requestDate      DateTime  @default(now())
   inspectionStatus String    @default("PENDING")
   defects          String?

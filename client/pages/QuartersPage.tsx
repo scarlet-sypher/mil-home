@@ -9,6 +9,8 @@ import { FormField } from "@/client/components/FormField";
 import { DataTable } from "@/client/components/DataTable";
 import { StatusBadge } from "@/client/components/StatusBadge";
 
+type Applicant = { serviceNo: string; rank: string; name: string; unit: string };
+type Allotment = { applicant: Applicant };
 type Quarter = {
   id: number;
   quarterNo: string;
@@ -17,6 +19,7 @@ type Quarter = {
   entitlement: string | null;
   status: string;
   condition: string;
+  allotments: Allotment[];
 };
 
 export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
@@ -52,7 +55,10 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
     <div className="min-h-screen bg-slate-50">
       <Header />
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-        <h1 className="text-2xl font-semibold text-slate-900">Quarters</h1>
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Quarters</h1>
+          <p className="text-sm text-slate-500">Quarters Vacant/Occupied</p>
+        </div>
 
         <form
           onSubmit={handleSubmit}
@@ -96,10 +102,25 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
 
         <DataTable
           columns={[
-            { header: "Quarter No.", render: (q: Quarter) => q.quarterNo },
-            { header: "Colony", render: (q: Quarter) => q.colony },
-            { header: "Type", render: (q: Quarter) => q.qtype },
-            { header: "Entitlement", render: (q: Quarter) => q.entitlement ?? "—" },
+            { header: "S/No.", render: (_q: Quarter, i: number) => i + 1 },
+            {
+              header: "Army No.",
+              render: (q: Quarter) => (q.status === "OCCUPIED" ? q.allotments[0]?.applicant.serviceNo ?? "—" : "—"),
+            },
+            {
+              header: "Rank",
+              render: (q: Quarter) => (q.status === "OCCUPIED" ? q.allotments[0]?.applicant.rank ?? "—" : "—"),
+            },
+            {
+              header: "Name",
+              render: (q: Quarter) => (q.status === "OCCUPIED" ? q.allotments[0]?.applicant.name ?? "—" : "—"),
+            },
+            {
+              header: "Unit",
+              render: (q: Quarter) => (q.status === "OCCUPIED" ? q.allotments[0]?.applicant.unit ?? "—" : "—"),
+            },
+            { header: "Qtr Loc", render: (q: Quarter) => q.colony },
+            { header: "Qtr No.", render: (q: Quarter) => q.quarterNo },
             { header: "Status", render: (q: Quarter) => <StatusBadge status={q.status} /> },
             { header: "Condition", render: (q: Quarter) => <StatusBadge status={q.condition} /> },
           ]}

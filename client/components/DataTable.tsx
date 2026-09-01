@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 type Column<T> = {
   header: string;
-  render: (row: T) => ReactNode;
+  render: (row: T, index: number) => ReactNode;
 };
 
 type DataTableProps<T> = {
@@ -34,11 +34,11 @@ export function DataTable<T>({ columns, rows, rowKey, emptyMessage = "No records
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 bg-white">
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <tr key={rowKey(row)}>
               {columns.map((column) => (
                 <td key={column.header} className="px-4 py-3">
-                  {column.render(row)}
+                  {column.render(row, index)}
                 </td>
               ))}
             </tr>
