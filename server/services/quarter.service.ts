@@ -22,18 +22,11 @@ export async function listOccupiedQuarters() {
   return prisma.quarter.findMany({ where: { status: "OCCUPIED" }, orderBy: { quarterNo: "asc" } });
 }
 
-export async function createQuarter(input: {
-  quarterNo: string;
-  colony: string;
-  qtype: string;
-  entitlement?: string;
-}) {
+export async function createQuarter(input: { quarterNo: string; colony: string }) {
   return prisma.quarter.create({
     data: {
       quarterNo: input.quarterNo,
       colony: input.colony,
-      qtype: input.qtype,
-      entitlement: input.entitlement,
       status: "VACANT",
       condition: "FIT",
     },

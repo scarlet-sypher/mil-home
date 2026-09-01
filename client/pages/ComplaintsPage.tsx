@@ -14,7 +14,6 @@ type ComplaintApplicant = { serviceNo: string; rank: string; name: string; unit:
 type ComplaintQuarter = { colony: string; quarterNo: string };
 type Complaint = {
   id: number;
-  category: string;
   description: string;
   status: string;
   applicant: ComplaintApplicant;
@@ -31,7 +30,7 @@ export function ComplaintsPage({
   applicants: PickerApplicant[];
 }) {
   const router = useRouter();
-  const [form, setForm] = useState({ quarterId: "", applicantId: "", category: "", description: "" });
+  const [form, setForm] = useState({ quarterId: "", applicantId: "", description: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,7 +56,7 @@ export function ComplaintsPage({
       return;
     }
 
-    setForm({ quarterId: "", applicantId: "", category: "", description: "" });
+    setForm({ quarterId: "", applicantId: "", description: "" });
     setSubmitting(false);
     router.refresh();
   }
@@ -112,7 +111,6 @@ export function ComplaintsPage({
               ))}
             </select>
           </div>
-          <FormField label="Category" name="category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required />
           <FormField label="Description" name="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
           <div className="flex items-end">
             <Button type="submit" disabled={submitting}>

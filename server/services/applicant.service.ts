@@ -31,8 +31,6 @@ export async function createApplicant(input: {
   rank: string;
   unit: string;
   seniorityDate: string;
-  category: string;
-  eligibleType: string;
   remarks?: string;
 }) {
   return prisma.applicant.create({
@@ -42,8 +40,6 @@ export async function createApplicant(input: {
       rank: input.rank,
       unit: input.unit,
       seniorityDate: new Date(input.seniorityDate),
-      category: input.category,
-      eligibleType: input.eligibleType,
       remarks: input.remarks,
       status: "WAITING",
     },

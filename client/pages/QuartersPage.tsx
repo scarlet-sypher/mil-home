@@ -15,8 +15,6 @@ type Quarter = {
   id: number;
   quarterNo: string;
   colony: string;
-  qtype: string;
-  entitlement: string | null;
   status: string;
   condition: string;
   allotments: Allotment[];
@@ -24,7 +22,7 @@ type Quarter = {
 
 export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
   const router = useRouter();
-  const [form, setForm] = useState({ quarterNo: "", colony: "", qtype: "", entitlement: "" });
+  const [form, setForm] = useState({ quarterNo: "", colony: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -46,7 +44,7 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
       return;
     }
 
-    setForm({ quarterNo: "", colony: "", qtype: "", entitlement: "" });
+    setForm({ quarterNo: "", colony: "" });
     setSubmitting(false);
     router.refresh();
   }
@@ -62,34 +60,21 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
 
         <form
           onSubmit={handleSubmit}
-          className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5"
+          className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-3"
         >
           <FormField
-            label="Quarter No."
-            name="quarterNo"
-            value={form.quarterNo}
-            onChange={(e) => setForm({ ...form, quarterNo: e.target.value })}
-            required
-          />
-          <FormField
-            label="Colony"
+            label="Qtr Loc"
             name="colony"
             value={form.colony}
             onChange={(e) => setForm({ ...form, colony: e.target.value })}
             required
           />
           <FormField
-            label="Type"
-            name="qtype"
-            value={form.qtype}
-            onChange={(e) => setForm({ ...form, qtype: e.target.value })}
+            label="Qtr No."
+            name="quarterNo"
+            value={form.quarterNo}
+            onChange={(e) => setForm({ ...form, quarterNo: e.target.value })}
             required
-          />
-          <FormField
-            label="Entitlement"
-            name="entitlement"
-            value={form.entitlement}
-            onChange={(e) => setForm({ ...form, entitlement: e.target.value })}
           />
           <div className="flex items-end">
             <Button type="submit" disabled={submitting}>
@@ -97,7 +82,7 @@ export function QuartersPage({ quarters }: { quarters: Quarter[] }) {
               Add Quarter
             </Button>
           </div>
-          {error && <p className="text-sm text-red-700 sm:col-span-2 lg:col-span-5">{error}</p>}
+          {error && <p className="text-sm text-red-700 sm:col-span-3">{error}</p>}
         </form>
 
         <DataTable

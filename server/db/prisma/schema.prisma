@@ -31,16 +31,14 @@ model Session {
 }
 
 model Quarter {
-  id          Int         @id @default(autoincrement())
-  quarterNo   String      @unique
-  colony      String
-  qtype       String
-  entitlement String?
-  status      String      @default("VACANT")
-  condition   String      @default("FIT")
-  allotments  Allotment[]
-  complaints  Complaint[]
-  vacations   Vacation[]
+  id         Int         @id @default(autoincrement())
+  quarterNo  String      @unique
+  colony     String
+  status     String      @default("VACANT")
+  condition  String      @default("FIT")
+  allotments Allotment[]
+  complaints Complaint[]
+  vacations  Vacation[]
 
   @@map("quarters")
 }
@@ -52,8 +50,6 @@ model Applicant {
   rank          String
   unit          String
   seniorityDate DateTime
-  category      String      @default("NORMAL")
-  eligibleType  String
   remarks       String?
   status        String      @default("WAITING")
   allotments    Allotment[]
@@ -69,7 +65,6 @@ model Allotment {
   applicant       Applicant @relation(fields: [applicantId], references: [id])
   quarterId       Int
   quarter         Quarter   @relation(fields: [quarterId], references: [id])
-  committeeStatus String    @default("PENDING")
   authorityStatus String    @default("PENDING")
   orderRef        String?
   createdAt       DateTime  @default(now())
@@ -83,9 +78,7 @@ model Complaint {
   quarter     Quarter   @relation(fields: [quarterId], references: [id])
   applicantId Int
   applicant   Applicant @relation(fields: [applicantId], references: [id])
-  category    String
   description String
-  assignedTo  String?
   status      String    @default("OPEN")
   createdAt   DateTime  @default(now())
   closedAt    DateTime?
@@ -103,7 +96,6 @@ model Vacation {
   inspectionStatus String    @default("PENDING")
   defects          String?
   clearanceStatus  String    @default("PENDING")
-  certificateRef   String?
 
   @@map("vacations")
 }

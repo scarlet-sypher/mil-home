@@ -28,20 +28,16 @@ export type LoginInput = z.infer<typeof loginSchema>;
 
 export const quarterSchema = z.object({
   quarterNo: z.string().trim().min(1, "Quarter number is required"),
-  colony: z.string().trim().min(1, "Colony is required"),
-  qtype: z.string().trim().min(1, "Type is required"),
-  entitlement: z.string().trim().optional(),
+  colony: z.string().trim().min(1, "Quarter location is required"),
 });
 export type QuarterInput = z.infer<typeof quarterSchema>;
 
 export const applicantSchema = z.object({
-  serviceNo: z.string().trim().min(1, "Service number is required"),
+  serviceNo: z.string().trim().min(1, "Army number is required"),
   name: z.string().trim().min(1, "Name is required"),
   rank: z.string().trim().min(1, "Rank is required"),
   unit: z.string().trim().min(1, "Unit is required"),
   seniorityDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Enter a valid date"),
-  category: z.string().trim().min(1).default("NORMAL"),
-  eligibleType: z.string().trim().min(1, "Eligible type is required"),
   remarks: z.string().trim().optional(),
 });
 export type ApplicantInput = z.infer<typeof applicantSchema>;
@@ -55,7 +51,6 @@ export type AllotmentCreateInput = z.infer<typeof allotmentCreateSchema>;
 export const complaintCreateSchema = z.object({
   quarterId: z.number().int().positive(),
   applicantId: z.number().int().positive(),
-  category: z.string().trim().min(1, "Category is required"),
   description: z.string().trim().min(1, "Description is required"),
 });
 export type ComplaintCreateInput = z.infer<typeof complaintCreateSchema>;

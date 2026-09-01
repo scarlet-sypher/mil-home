@@ -47,7 +47,7 @@ export async function approveAllotment(id: number) {
   return prisma.$transaction(async (tx) => {
     const updated = await tx.allotment.update({
       where: { id },
-      data: { committeeStatus: "APPROVED", authorityStatus: "APPROVED", orderRef },
+      data: { authorityStatus: "APPROVED", orderRef },
     });
     await tx.applicant.update({ where: { id: allotment.applicantId }, data: { status: "ALLOTTED" } });
     await tx.quarter.update({ where: { id: allotment.quarterId }, data: { status: "OCCUPIED" } });

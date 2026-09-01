@@ -23,7 +23,7 @@ export async function handleCreateComplaint(request: NextRequest) {
   }
 
   const complaint = await createComplaint(parsed.data);
-  await logAudit({ actor: user.email, action: "CREATE", entity: "COMPLAINT", entityId: complaint.id, details: complaint.category });
+  await logAudit({ actor: user.email, action: "CREATE", entity: "COMPLAINT", entityId: complaint.id, details: complaint.description });
   return NextResponse.json({ complaint }, { status: 201 });
 }
 

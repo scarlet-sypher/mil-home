@@ -7,17 +7,11 @@ export async function listComplaints() {
   });
 }
 
-export async function createComplaint(input: {
-  quarterId: number;
-  applicantId: number;
-  category: string;
-  description: string;
-}) {
+export async function createComplaint(input: { quarterId: number; applicantId: number; description: string }) {
   return prisma.complaint.create({
     data: {
       quarterId: input.quarterId,
       applicantId: input.applicantId,
-      category: input.category,
       description: input.description,
       status: "OPEN",
     },

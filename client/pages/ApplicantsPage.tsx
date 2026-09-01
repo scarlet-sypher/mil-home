@@ -18,8 +18,6 @@ type Applicant = {
   rank: string;
   unit: string;
   seniorityDate: Date;
-  category: string;
-  eligibleType: string;
   remarks: string | null;
   status: string;
   allotments: Allotment[];
@@ -31,8 +29,6 @@ const EMPTY_FORM = {
   rank: "",
   unit: "",
   seniorityDate: "",
-  category: "NORMAL",
-  eligibleType: "",
   remarks: "",
 };
 
@@ -90,8 +86,6 @@ export function ApplicantsPage({ applicants }: { applicants: Applicant[] }) {
             onChange={(e) => setForm({ ...form, seniorityDate: e.target.value })}
             required
           />
-          <FormField label="Category" name="category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required />
-          <FormField label="Eligible Type" name="eligibleType" value={form.eligibleType} onChange={(e) => setForm({ ...form, eligibleType: e.target.value })} required />
           <FormField label="Remarks" name="remarks" value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} />
           <div className="flex items-end">
             <Button type="submit" disabled={submitting}>
