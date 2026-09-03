@@ -1,6 +1,6 @@
-type StatusTone = "neutral" | "good" | "warn" | "bad";
+export type StatusTone = "neutral" | "good" | "warn" | "bad";
 
-const STATUS_TONE: Record<string, StatusTone> = {
+export const STATUS_TONE: Record<string, StatusTone> = {
   VACANT: "good",
   RESERVED: "warn",
   OCCUPIED: "neutral",
@@ -16,9 +16,14 @@ const STATUS_TONE: Record<string, StatusTone> = {
   INSPECTED: "neutral",
   CLEARED: "good",
   DEFECTS: "bad",
+  IN_PROGRESS: "warn",
+  COMPLETED: "good",
+  REJECTED: "bad",
+  UNALLOCATED: "neutral",
+  BLOCKED: "bad",
 };
 
-const TONE_CLASSES: Record<StatusTone, string> = {
+export const TONE_CLASSES: Record<StatusTone, string> = {
   neutral: "bg-slate-100 text-slate-700",
   good: "bg-emerald-100 text-emerald-800",
   warn: "bg-amber-100 text-amber-800",

@@ -10,9 +10,11 @@ type PasswordInputProps = {
   value: string;
   onChange: (value: string) => void;
   error?: string;
+  labelClassName?: string;
+  className?: string;
 };
 
-export function PasswordInput({ label, name, value, onChange, error }: PasswordInputProps) {
+export function PasswordInput({ label, name, value, onChange, error, labelClassName, className }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -23,6 +25,8 @@ export function PasswordInput({ label, name, value, onChange, error }: PasswordI
       value={value}
       onChange={(event) => onChange(event.target.value)}
       error={error}
+      labelClassName={labelClassName}
+      className={className}
       autoComplete={name === "password" ? "new-password" : "off"}
       rightSlot={
         <button

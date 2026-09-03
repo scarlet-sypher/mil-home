@@ -10,6 +10,7 @@ datasource db {
 model User {
   id             Int       @id @default(autoincrement())
   email          String    @unique
+  username       String
   passwordHash   String
   failedAttempts Int       @default(0)
   lockedUntil    DateTime?
@@ -34,7 +35,7 @@ model Quarter {
   id        Int    @id @default(autoincrement())
   quarterNo String @unique
   colony    String
-  status    String @default("VACANT") // VACANT | OCCUPIED | RESERVED | UNDER_MAINTENANCE
+  status    String @default("VACANT") // VACANT | OCCUPIED | RESERVED
   condition String @default("FIT") // FIT | UNFIT
 
   // Direct occupant fields, filled only via the Quarters-tab "Occupied" form
@@ -43,30 +44,55 @@ model Quarter {
   name      String?
   unit      String?
 
-  // Maintenance workflow
-  statusBeforeMaintenance    String?
-  maintenanceStatus          String? // null | IN_PROGRESS | COMPLETED
-  maintenanceRemark          String?
-  maintenanceCompletedRemark String?
-  maintenanceStartedAt       DateTime?
-  maintenanceEndedAt         DateTime?
+  // True while this quarter has an in-progress maintenance record. The quarter
+  // keeps its VACANT/OCCUPIED status and stays visible in that tab, just disabled.
+  underMaintenance Boolean @default(false)
 
-  allotments Allotment[]
-  complaints Complaint[]
-  vacations  Vacation[]
+  createdAt DateTime @default(now())
+
+  allotments         Allotment[]
+  complaints         Complaint[]
+  vacations          Vacation[]
+  maintenanceRecords MaintenanceRecord[]
 
   @@map("quarters")
 }
 
+model MaintenanceRecord {
+  id        Int     @id @default(autoincrement())
+  quarterId Int
+  quarter   Quarter @relation(fields: [quarterId], references: [id])
+
+  // Snapshot of the quarter at the moment maintenance started, so this entry
+  // stays accurate even if the quarter is later edited or re-occupied.
+  colony                  String
+  quarterNo               String
+  statusBeforeMaintenance String // VACANT | OCCUPIED
+  condition               String
+  serviceNo               String?
+  rank                    String?
+  name                    String?
+  unit                    String?
+
+  remark          String
+  status          String    @default("IN_PROGRESS") // IN_PROGRESS | COMPLETED
+  completedRemark String?
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime?
+
+  @@map("maintenance_records")
+}
+
 model Applicant {
   id            Int         @id @default(autoincrement())
-  serviceNo     String
+  serviceNo     String      @unique
   name          String
   rank          String
   unit          String
   seniorityDate DateTime
   remarks       String?
   status        String      @default("WAITING")
+  createdAt     DateTime    @default(now())
   allotments    Allotment[]
   complaints    Complaint[]
   vacations     Vacation[]
@@ -94,7 +120,8 @@ model Complaint {
   applicantId Int
   applicant   Applicant @relation(fields: [applicantId], references: [id])
   description String
-  status      String    @default("OPEN")
+  status      String    @default("OPEN") // OPEN | IN_PROGRESS | WAITING | BLOCKED | CLOSED
+  remark      String?
   createdAt   DateTime  @default(now())
   closedAt    DateTime?
 

@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { Header } from "@/client/components/Header";
+import { TopNav } from "@/client/components/TopNav";
 import { Button } from "@/client/components/Button";
 import { FormField } from "@/client/components/FormField";
 import { DataTable } from "@/client/components/DataTable";
 import { StatusBadge } from "@/client/components/StatusBadge";
+import { Modal } from "@/client/components/Modal";
+import { RemarkCell } from "@/client/components/RemarkCell";
+import { formatDate } from "@/client/lib/format-date";
 
 type Quarter = { colony: string; quarterNo: string };
 type Allotment = { quarter: Quarter };
@@ -34,14 +37,28 @@ const EMPTY_FORM = {
 
 export function ApplicantsPage({ applicants }: { applicants: Applicant[] }) {
   const router = useRouter();
+  const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState("");
+  const [serviceNoError, setServiceNoError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  function openAddModal() {
+    setForm(EMPTY_FORM);
+    setError("");
+    setServiceNoError("");
+    setShowAddModal(true);
+  }
+
+  function closeAddModal() {
+    setShowAddModal(false);
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitting(true);
     setError("");
+    setServiceNoError("");
 
     const response = await fetch("/api/applicants", {
       method: "POST",
@@ -51,68 +68,102 @@ export function ApplicantsPage({ applicants }: { applicants: Applicant[] }) {
 
     if (!response.ok) {
       const data = await response.json();
-      setError(data.error ?? "Something went wrong.");
+      if (data.field === "serviceNo") {
+        setServiceNoError(data.error ?? "This army number is already in use.");
+      } else {
+        setError(data.error ?? "Something went wrong.");
+      }
       setSubmitting(false);
       return;
     }
 
     setForm(EMPTY_FORM);
     setSubmitting(false);
+    setShowAddModal(false);
     router.refresh();
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Header />
-      <main className="mx-auto max-w-screen-2xl space-y-6 px-4 py-8 sm:px-6 lg:px-10">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Applicants</h1>
-          <p className="text-sm text-slate-500">Applicants/Waiting</p>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          <FormField label="Army No." name="serviceNo" value={form.serviceNo} onChange={(e) => setForm({ ...form, serviceNo: e.target.value })} required />
-          <FormField label="Name" name="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <FormField label="Rank" name="rank" value={form.rank} onChange={(e) => setForm({ ...form, rank: e.target.value })} required />
-          <FormField label="Unit" name="unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} required />
-          <FormField
-            label="Seniority Date"
-            name="seniorityDate"
-            type="date"
-            value={form.seniorityDate}
-            onChange={(e) => setForm({ ...form, seniorityDate: e.target.value })}
-            required
-          />
-          <FormField label="Remarks" name="remarks" value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} />
-          <div className="flex items-end">
-            <Button type="submit" disabled={submitting}>
-              <Plus size={16} />
-              Add Applicant
-            </Button>
+    <div className="min-h-screen bg-page-bg">
+      <TopNav />
+      <main className="w-full space-y-6 px-3 py-8 sm:px-4 lg:px-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Applicants</h1>
+            <p className="text-sm text-slate-500">Applicants/Waiting</p>
           </div>
-          {error && <p className="text-sm text-red-700 sm:col-span-2 lg:col-span-4">{error}</p>}
-        </form>
+          <Button onClick={openAddModal}>
+            <Plus size={16} />
+            Add Applicant
+          </Button>
+        </div>
 
         <DataTable
           columns={[
-            { header: "S/No.", render: (_a: Applicant, i: number) => i + 1 },
-            { header: "Army No.", render: (a: Applicant) => a.serviceNo },
-            { header: "Rank", render: (a: Applicant) => a.rank },
-            { header: "Name", render: (a: Applicant) => a.name },
-            { header: "Unit", render: (a: Applicant) => a.unit },
-            { header: "Seniority", render: (a: Applicant) => new Date(a.seniorityDate).toLocaleDateString() },
-            { header: "Qtr Loc", render: (a: Applicant) => (a.status === "ALLOTTED" ? a.allotments[0]?.quarter.colony ?? "—" : "—") },
-            { header: "Qtr No.", render: (a: Applicant) => (a.status === "ALLOTTED" ? a.allotments[0]?.quarter.quarterNo ?? "—" : "—") },
-            { header: "Status", render: (a: Applicant) => <StatusBadge status={a.status} /> },
-            { header: "Remarks", render: (a: Applicant) => a.remarks ?? "—" },
+            { header: "S/No.", render: (_a: Applicant, i: number) => i + 1, exportValue: (_a, i) => i + 1 },
+            { header: "Army No.", render: (a: Applicant) => a.serviceNo, sortValue: (a) => a.serviceNo },
+            { header: "Rank", render: (a: Applicant) => a.rank, sortValue: (a) => a.rank },
+            { header: "Name", render: (a: Applicant) => a.name, sortValue: (a) => a.name },
+            { header: "Unit", render: (a: Applicant) => a.unit, sortValue: (a) => a.unit },
+            { header: "Seniority", render: (a: Applicant) => formatDate(a.seniorityDate), sortValue: (a) => a.seniorityDate },
+            {
+              header: "Qtr Loc",
+              render: (a: Applicant) => (a.status === "ALLOTTED" ? a.allotments[0]?.quarter.colony ?? "—" : "—"),
+              sortValue: (a) => (a.status === "ALLOTTED" ? a.allotments[0]?.quarter.colony : undefined),
+            },
+            {
+              header: "Qtr No.",
+              render: (a: Applicant) => (a.status === "ALLOTTED" ? a.allotments[0]?.quarter.quarterNo ?? "—" : "—"),
+              sortValue: (a) => (a.status === "ALLOTTED" ? a.allotments[0]?.quarter.quarterNo : undefined),
+            },
+            { header: "Status", render: (a: Applicant) => <StatusBadge status={a.status} />, sortValue: (a) => a.status },
+            { header: "Remarks", render: (a: Applicant) => <RemarkCell text={a.remarks} label="Remarks" />, sortValue: (a) => a.remarks },
           ]}
           rows={applicants}
           rowKey={(a) => a.id}
+          title="Applicants"
         />
       </main>
+
+      {showAddModal && (
+        <Modal title="Add Applicant" onClose={closeAddModal}>
+          <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              label="Army No."
+              name="serviceNo"
+              value={form.serviceNo}
+              onChange={(e) => {
+                setForm({ ...form, serviceNo: e.target.value });
+                setServiceNoError("");
+              }}
+              error={serviceNoError}
+              required
+            />
+            <FormField label="Name" name="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <FormField label="Rank" name="rank" value={form.rank} onChange={(e) => setForm({ ...form, rank: e.target.value })} required />
+            <FormField label="Unit" name="unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} required />
+            <FormField
+              label="Seniority Date"
+              name="seniorityDate"
+              type="date"
+              value={form.seniorityDate}
+              onChange={(e) => setForm({ ...form, seniorityDate: e.target.value })}
+              required
+            />
+            <FormField label="Remarks" name="remarks" value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} />
+            {error && <p className="text-sm text-red-700 sm:col-span-2">{error}</p>}
+            <div className="flex justify-end gap-2 sm:col-span-2">
+              <Button type="button" variant="secondary" onClick={closeAddModal}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                <Plus size={16} />
+                Add Applicant
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

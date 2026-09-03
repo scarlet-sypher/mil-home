@@ -11,6 +11,7 @@ export const passwordSchema = z
 export const signupSchema = z
   .object({
     email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+    username: z.string().trim().min(1, "Username is required"),
     password: passwordSchema,
     confirmPassword: z.string(),
   })
@@ -89,6 +90,18 @@ export const complaintCreateSchema = z.object({
   description: z.string().trim().min(1, "Description is required"),
 });
 export type ComplaintCreateInput = z.infer<typeof complaintCreateSchema>;
+
+export const complaintStatusEnum = z.enum(["OPEN", "IN_PROGRESS", "WAITING", "BLOCKED", "CLOSED"]);
+
+export const complaintUpdateSchema = z
+  .object({
+    status: complaintStatusEnum.optional(),
+    remark: z.string().trim().optional(),
+  })
+  .refine((data) => data.status !== undefined || data.remark !== undefined, {
+    message: "Provide a status or a remark to update.",
+  });
+export type ComplaintUpdateInput = z.infer<typeof complaintUpdateSchema>;
 
 export const vacationCreateSchema = z.object({
   quarterId: z.number().int().positive(),

@@ -15,16 +15,16 @@ export class AuthError extends Error {
   }
 }
 
-export async function signup(email: string, password: string) {
+export async function signup(email: string, password: string, username: string) {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     throw new AuthError("This email is already registered. Please log in instead.", 409);
   }
 
   const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
-  const user = await prisma.user.create({ data: { email, passwordHash } });
+  const user = await prisma.user.create({ data: { email, username, passwordHash } });
   await logAudit({ actor: email, action: "SIGNUP", entity: "USER", entityId: user.id });
-  return { id: user.id, email: user.email };
+  return { id: user.id, email: user.email, username: user.username };
 }
 
 export async function login(email: string, password: string) {

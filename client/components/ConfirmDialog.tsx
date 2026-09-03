@@ -42,12 +42,12 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 animate-[fade-in_150ms_ease-out]"
       onClick={onCancel}
       role="presentation"
     >
       <div
-        className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+        className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl animate-[fade-in-scale_150ms_ease-out]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -66,7 +66,7 @@ export function ConfirmDialog({
               onChange={(event) => onInputChange?.(event.target.value)}
               rows={3}
               autoFocus
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-navy-700 focus:outline-none focus:ring-1 focus:ring-navy-700"
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
         )}

@@ -1,12 +1,23 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import type { QuarterUpdateInput } from "@/server/lib/validators";
 
 export class QuarterError extends Error {
   status: number;
-  constructor(message: string, status = 400) {
+  field?: string;
+  constructor(message: string, status = 400, field?: string) {
     super(message);
     this.status = status;
+    this.field = field;
   }
+}
+
+function isDuplicateQuarterNo(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002" &&
+    (error.meta?.target as string[] | undefined)?.includes("quarterNo")
+  );
 }
 
 export async function listQuarters() {
@@ -14,7 +25,10 @@ export async function listQuarters() {
 }
 
 export async function listAvailableQuarters() {
-  return prisma.quarter.findMany({ where: { status: "VACANT", condition: "FIT" }, orderBy: { quarterNo: "asc" } });
+  return prisma.quarter.findMany({
+    where: { status: "VACANT", condition: "FIT", underMaintenance: false },
+    orderBy: { quarterNo: "asc" },
+  });
 }
 
 export async function listOccupiedQuarters() {
@@ -22,14 +36,21 @@ export async function listOccupiedQuarters() {
 }
 
 export async function createVacantQuarter(input: { quarterNo: string; colony: string; condition: string }) {
-  return prisma.quarter.create({
-    data: {
-      quarterNo: input.quarterNo,
-      colony: input.colony,
-      condition: input.condition,
-      status: "VACANT",
-    },
-  });
+  try {
+    return await prisma.quarter.create({
+      data: {
+        quarterNo: input.quarterNo,
+        colony: input.colony,
+        condition: input.condition,
+        status: "VACANT",
+      },
+    });
+  } catch (error) {
+    if (isDuplicateQuarterNo(error)) {
+      throw new QuarterError("This quarter number is already in use.", 409, "quarterNo");
+    }
+    throw error;
+  }
 }
 
 export async function createOccupiedQuarter(input: {
@@ -41,18 +62,25 @@ export async function createOccupiedQuarter(input: {
   colony: string;
   condition: string;
 }) {
-  return prisma.quarter.create({
-    data: {
-      serviceNo: input.serviceNo,
-      rank: input.rank,
-      name: input.name,
-      unit: input.unit,
-      quarterNo: input.quarterNo,
-      colony: input.colony,
-      condition: input.condition,
-      status: "OCCUPIED",
-    },
-  });
+  try {
+    return await prisma.quarter.create({
+      data: {
+        serviceNo: input.serviceNo,
+        rank: input.rank,
+        name: input.name,
+        unit: input.unit,
+        quarterNo: input.quarterNo,
+        colony: input.colony,
+        condition: input.condition,
+        status: "OCCUPIED",
+      },
+    });
+  } catch (error) {
+    if (isDuplicateQuarterNo(error)) {
+      throw new QuarterError("This quarter number is already in use.", 409, "quarterNo");
+    }
+    throw error;
+  }
 }
 
 export async function updateQuarter(id: number, input: QuarterUpdateInput) {
@@ -60,11 +88,20 @@ export async function updateQuarter(id: number, input: QuarterUpdateInput) {
   if (!quarter) {
     throw new QuarterError("Quarter not found.", 404);
   }
-  if (quarter.maintenanceStatus === "COMPLETED") {
-    throw new QuarterError("This record went through maintenance and can no longer be edited.", 409);
+  const definedFields = Object.entries(input).filter(([, value]) => value !== undefined);
+  const isConditionOnlyUpdate = definedFields.length === 1 && definedFields[0][0] === "condition";
+  if (quarter.underMaintenance && !isConditionOnlyUpdate) {
+    throw new QuarterError("This quarter is currently under maintenance and cannot be edited.", 409);
   }
 
-  return prisma.quarter.update({ where: { id }, data: input });
+  try {
+    return await prisma.quarter.update({ where: { id }, data: input });
+  } catch (error) {
+    if (isDuplicateQuarterNo(error)) {
+      throw new QuarterError("This quarter number is already in use.", 409, "quarterNo");
+    }
+    throw error;
+  }
 }
 
 export async function deleteQuarter(id: number) {
@@ -72,60 +109,16 @@ export async function deleteQuarter(id: number) {
   if (!quarter) {
     throw new QuarterError("Quarter not found.", 404);
   }
+  if (quarter.underMaintenance) {
+    throw new QuarterError("This quarter is currently under maintenance and cannot be deleted.", 409);
+  }
 
   try {
     await prisma.quarter.delete({ where: { id } });
   } catch {
     throw new QuarterError(
-      "Cannot delete this quarter: it has related allotment, complaint, or vacation records.",
+      "Cannot delete this quarter: it has related allotment, complaint, vacation, or maintenance records.",
       409,
     );
   }
-}
-
-export async function startMaintenance(id: number, remark: string) {
-  const quarter = await prisma.quarter.findUnique({ where: { id } });
-  if (!quarter) {
-    throw new QuarterError("Quarter not found.", 404);
-  }
-  if (quarter.status !== "VACANT" && quarter.status !== "OCCUPIED") {
-    throw new QuarterError("Only vacant or occupied quarters can be sent for maintenance.", 409);
-  }
-
-  return prisma.quarter.update({
-    where: { id },
-    data: {
-      statusBeforeMaintenance: quarter.status,
-      status: "UNDER_MAINTENANCE",
-      maintenanceStatus: "IN_PROGRESS",
-      maintenanceRemark: remark,
-      maintenanceStartedAt: new Date(),
-      maintenanceEndedAt: null,
-      maintenanceCompletedRemark: null,
-    },
-  });
-}
-
-export async function completeMaintenance(id: number, remark: string) {
-  const quarter = await prisma.quarter.findUnique({ where: { id } });
-  if (!quarter) {
-    throw new QuarterError("Quarter not found.", 404);
-  }
-  if (quarter.maintenanceStatus !== "IN_PROGRESS") {
-    throw new QuarterError("This quarter is not currently under maintenance.", 409);
-  }
-
-  return prisma.quarter.update({
-    where: { id },
-    data: {
-      status: "VACANT",
-      maintenanceStatus: "COMPLETED",
-      maintenanceCompletedRemark: remark || null,
-      maintenanceEndedAt: new Date(),
-      serviceNo: null,
-      rank: null,
-      name: null,
-      unit: null,
-    },
-  });
 }

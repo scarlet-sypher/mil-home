@@ -8,5 +8,5 @@ export default async function Page() {
   if (!user) redirect("/login");
 
   const stats = await getDashboardStats();
-  return <HomePage email={user.email} stats={stats} />;
+  return <HomePage username={user.username} stats={stats} />;
 }

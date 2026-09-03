@@ -5,7 +5,7 @@ import { prisma } from "@/server/db/client";
 const COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "mil_home_session";
 const TTL_HOURS = Number(process.env.SESSION_TTL_HOURS ?? 3);
 
-export type SessionUser = { id: number; email: string };
+export type SessionUser = { id: number; email: string; username: string };
 
 export async function createSession(userId: number): Promise<void> {
   const token = crypto.randomBytes(32).toString("hex");
@@ -38,7 +38,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     return null;
   }
 
-  return { id: session.user.id, email: session.user.email };
+  return { id: session.user.id, email: session.user.email, username: session.user.username };
 }
 
 export async function destroySession(): Promise<void> {

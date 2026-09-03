@@ -23,6 +23,7 @@ describe("signupSchema", () => {
   it("lowercases and trims the email", () => {
     const result = signupSchema.safeParse({
       email: "  User@Example.com  ",
+      username: "testuser",
       password: "Abcdefgh1!",
       confirmPassword: "Abcdefgh1!",
     });
@@ -35,6 +36,7 @@ describe("signupSchema", () => {
   it("rejects when confirmPassword does not match", () => {
     const result = signupSchema.safeParse({
       email: "user@example.com",
+      username: "testuser",
       password: "Abcdefgh1!",
       confirmPassword: "Different1!",
     });

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: mil-home-postgres
+    environment:
+      POSTGRES_USER: mil_home
+      POSTGRES_PASSWORD: mil_home_dev
+      POSTGRES_DB: mil_home
+    ports:
+      - "5433:5432"
+    volumes:
+      - mil-home-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  mil-home-postgres-data:

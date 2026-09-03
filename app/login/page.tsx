@@ -1,5 +1,5 @@
-import { LoginPage } from "@/client/pages/LoginPage";
+import { AuthPage } from "@/client/pages/AuthPage";
 
 export default function Page() {
-  return <LoginPage />;
+  return <AuthPage defaultTab="login" />;
 }

@@ -11,7 +11,7 @@ export async function handleSignup(request: NextRequest) {
   }
 
   try {
-    const user = await signup(parsed.data.email, parsed.data.password);
+    const user = await signup(parsed.data.email, parsed.data.password, parsed.data.username);
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {
     if (error instanceof AuthError) {

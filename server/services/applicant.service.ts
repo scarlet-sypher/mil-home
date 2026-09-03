@@ -1,5 +1,16 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { compareApplicantPriority } from "@/server/lib/applicant-sort";
+
+export class ApplicantError extends Error {
+  status: number;
+  field?: string;
+  constructor(message: string, status = 400, field?: string) {
+    super(message);
+    this.status = status;
+    this.field = field;
+  }
+}
 
 export async function listApplicants() {
   const applicants = await prisma.applicant.findMany({
@@ -33,15 +44,26 @@ export async function createApplicant(input: {
   seniorityDate: string;
   remarks?: string;
 }) {
-  return prisma.applicant.create({
-    data: {
-      serviceNo: input.serviceNo,
-      name: input.name,
-      rank: input.rank,
-      unit: input.unit,
-      seniorityDate: new Date(input.seniorityDate),
-      remarks: input.remarks,
-      status: "WAITING",
-    },
-  });
+  try {
+    return await prisma.applicant.create({
+      data: {
+        serviceNo: input.serviceNo,
+        name: input.name,
+        rank: input.rank,
+        unit: input.unit,
+        seniorityDate: new Date(input.seniorityDate),
+        remarks: input.remarks,
+        status: "WAITING",
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      (error.meta?.target as string[] | undefined)?.includes("serviceNo")
+    ) {
+      throw new ApplicantError("This army number is already in use.", 409, "serviceNo");
+    }
+    throw error;
+  }
 }
