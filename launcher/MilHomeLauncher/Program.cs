@@ -265,19 +265,84 @@ internal static class Program
 
     private static void KillTree(Process process)
     {
+        Log($"KillTree: PID={process.Id} HasExited={SafeHasExited(process)}");
         try
         {
             process.Kill(entireProcessTree: true);
+            Log("KillTree: entireProcessTree kill call completed without throwing.");
+        }
+        catch (Exception ex)
+        {
+            // Logged, not swallowed -- "already exited" is a real possible cause here,
+            // but so is anything else, and silently assuming the former hides real bugs.
+            Log("KillTree: entireProcessTree kill threw: " + ex);
+        }
+
+        // Belt-and-suspenders: npm on Windows can re-spawn through another shell layer
+        // to run a package.json script, so the actual long-lived node.exe serving the
+        // app may no longer be a live descendant of the cmd.exe PID captured in
+        // StartNode() by the time we get here -- entireProcessTree can only kill what
+        // Windows still reports as part of that tree. Directly find and kill any
+        // node.exe running from inside this install, regardless of ancestry.
+        try
+        {
+            foreach (var candidate in Process.GetProcessesByName("node"))
+            {
+                using (candidate)
+                {
+                    var path = SafeMainModulePath(candidate);
+                    Log($"KillTree: found node.exe PID={candidate.Id} Path={path ?? "(unknown)"}");
+                    if (path != null && path.StartsWith(AppDir, StringComparison.OrdinalIgnoreCase))
+                    {
+                        try
+                        {
+                            candidate.Kill(entireProcessTree: true);
+                            Log($"KillTree: killed node.exe PID={candidate.Id} (matched AppDir).");
+                        }
+                        catch (Exception ex)
+                        {
+                            Log($"KillTree: failed to kill node.exe PID={candidate.Id}: {ex}");
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log("KillTree: GetProcessesByName('node') scan failed: " + ex);
+        }
+    }
+
+    private static bool SafeHasExited(Process process)
+    {
+        try
+        {
+            return process.HasExited;
         }
         catch
         {
-            // Already exited -- nothing to do.
+            return true;
+        }
+    }
+
+    private static string? SafeMainModulePath(Process process)
+    {
+        try
+        {
+            return process.MainModule?.FileName;
+        }
+        catch
+        {
+            // Access denied (a different user's process) or already exited.
+            return null;
         }
     }
 
     // "cmd /c npm run start:desktop" is really cmd.exe -> npm.cmd -> node.exe -> next's
-    // own worker; Process.Kill(entireProcessTree: true) collapses that whole chain in
-    // one call regardless of how many shells are nested in between.
+    // own worker, and on Windows that chain doesn't reliably stay one connected process
+    // tree all the way through (see KillTree's fallback above) -- this helper is only
+    // used for short-lived one-shot commands (net.exe/sc.exe), where that's not a
+    // concern.
     private static string RunHidden(string fileName, string arguments)
     {
         using var process = Process.Start(new ProcessStartInfo
