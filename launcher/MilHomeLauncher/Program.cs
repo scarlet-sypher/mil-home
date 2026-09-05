@@ -16,7 +16,10 @@ namespace MilHomeLauncher;
 internal static class Program
 {
     private const string ServiceName = "mil-home-postgresql";
-    private const string AppUrl = "http://127.0.0.1:8000/";
+    private const int AppPort = 8000;
+    // Not a const interpolated string -- kept as a plain concatenation to avoid relying
+    // on a C# feature that's untested in this project's actual build (net8.0-windows).
+    private static readonly string AppUrl = "http://127.0.0.1:" + AppPort + "/";
     private const int ReadyTimeoutMs = 15000;
     private const int ReadyPollMs = 300;
     private const int HeartbeatStaleSec = 13;
@@ -294,34 +297,42 @@ internal static class Program
         // to run a package.json script, so the actual long-lived node.exe serving the
         // app may no longer be a live descendant of the cmd.exe PID captured in
         // StartNode() by the time we get here -- entireProcessTree can only kill what
-        // Windows still reports as part of that tree. Directly find and kill any
-        // node.exe running from inside this install, regardless of ancestry.
+        // Windows still reports as part of that tree. node.exe also never actually
+        // lives under AppDir on any machine (real or CI) -- it's wherever Node itself
+        // was installed, which varies -- so path-matching by install location doesn't
+        // work either. The one thing that's true regardless of ancestry or install
+        // location: whatever is actually serving the app is listening on its port.
+        KillWhateverIsListeningOnAppPort();
+    }
+
+    private static void KillWhateverIsListeningOnAppPort()
+    {
         try
         {
-            foreach (var candidate in Process.GetProcessesByName("node"))
+            var netstatOutput = RunHidden("netstat.exe", "-ano");
+            var portMarker = $":{AppPort} ";
+            foreach (var line in netstatOutput.Split('\n'))
             {
-                using (candidate)
+                if (!line.Contains("LISTENING") || !line.Contains(portMarker)) continue;
+
+                var columns = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (columns.Length == 0 || !int.TryParse(columns[^1], out var pid)) continue;
+
+                try
                 {
-                    var path = SafeMainModulePath(candidate);
-                    Log($"KillTree: found node.exe PID={candidate.Id} Path={path ?? "(unknown)"}");
-                    if (path != null && path.StartsWith(AppDir, StringComparison.OrdinalIgnoreCase))
-                    {
-                        try
-                        {
-                            candidate.Kill(entireProcessTree: true);
-                            Log($"KillTree: killed node.exe PID={candidate.Id} (matched AppDir).");
-                        }
-                        catch (Exception ex)
-                        {
-                            Log($"KillTree: failed to kill node.exe PID={candidate.Id}: {ex}");
-                        }
-                    }
+                    using var listener = Process.GetProcessById(pid);
+                    Log($"KillWhateverIsListeningOnAppPort: killing PID={pid} ({listener.ProcessName}), listening on port {AppPort}.");
+                    listener.Kill(entireProcessTree: true);
+                }
+                catch (Exception ex)
+                {
+                    Log($"KillWhateverIsListeningOnAppPort: failed to kill PID={pid}: {ex}");
                 }
             }
         }
         catch (Exception ex)
         {
-            Log("KillTree: GetProcessesByName('node') scan failed: " + ex);
+            Log("KillWhateverIsListeningOnAppPort: netstat scan failed: " + ex);
         }
     }
 
@@ -334,19 +345,6 @@ internal static class Program
         catch
         {
             return true;
-        }
-    }
-
-    private static string? SafeMainModulePath(Process process)
-    {
-        try
-        {
-            return process.MainModule?.FileName;
-        }
-        catch
-        {
-            // Access denied (a different user's process) or already exited.
-            return null;
         }
     }
 
