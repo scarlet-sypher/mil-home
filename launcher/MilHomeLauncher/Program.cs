@@ -24,10 +24,28 @@ internal static class Program
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(2) };
 
-    // Set by the CI smoke test so a failure path logs to stderr instead of blocking
-    // forever on a MessageBox nobody's there to dismiss.
+    // Set by the CI smoke test so a failure path logs instead of blocking forever on a
+    // MessageBox nobody's there to dismiss.
     private static readonly bool TestMode =
         Environment.GetEnvironmentVariable("MIL_HOME_LAUNCHER_TEST_MODE") == "1";
+
+    // A WinExe app has no console -- Console.Error/Out writes silently go nowhere, so
+    // this is the only way to see what actually happened. Written to %TEMP%, not under
+    // AppDir, so logging keeps working even if AppDir's own resolution is what's wrong.
+    private static readonly string LogPath =
+        Path.Combine(Path.GetTempPath(), "mil-home-launcher.log");
+
+    private static void Log(string message)
+    {
+        try
+        {
+            File.AppendAllText(LogPath, $"{DateTime.UtcNow:O} {message}\n");
+        }
+        catch
+        {
+            // Logging itself must never be what crashes the launcher.
+        }
+    }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
@@ -36,11 +54,8 @@ internal static class Program
 
     private static void ShowError(string message)
     {
-        if (TestMode)
-        {
-            Console.Error.WriteLine("[launcher] " + message);
-            return;
-        }
+        Log("ERROR: " + message);
+        if (TestMode) return;
         MessageBox(IntPtr.Zero, message, "MIL-HOME", MB_ICONERROR);
     }
 
@@ -55,10 +70,13 @@ internal static class Program
 
     private static async Task<int> Main()
     {
+        Log($"Launcher starting. AppDir={AppDir} ProcessPath={Environment.ProcessPath} TestMode={TestMode}");
+
         // Already running (e.g. a second double-click)? Open another tab, don't start
         // a second Node process on the same port, don't start a second watcher.
         if (await UrlResponds())
         {
+            Log("App already responding -- opening another tab and exiting.");
             OpenBrowser();
             return 0;
         }
@@ -75,38 +93,55 @@ internal static class Program
         if (File.Exists(HeartbeatPath)) File.Delete(HeartbeatPath);
 
         var node = StartNode();
+        Log($"Started node process, PID={node.Id}");
 
         if (!await WaitForReady())
         {
+            Log("App did not become ready within the timeout.");
             KillTree(node);
             ShowError("MIL-HOME did not start within 15 seconds.\n" +
                       "Please try again. If this keeps happening, restart your computer.");
             return 1;
         }
 
+        Log("App is ready. Opening browser and starting heartbeat watch.");
         OpenBrowser();
         WatchHeartbeatAndKill(node);
+        Log("Heartbeat went stale -- killed node process tree. Exiting.");
         return 0;
     }
 
     private static bool EnsureServiceRunning()
     {
-        if (IsServiceRunning()) return true;
-        RunHidden("net.exe", $"start {ServiceName}");
-        return IsServiceRunning();
+        if (IsServiceRunning())
+        {
+            Log($"Service {ServiceName} already running.");
+            return true;
+        }
+        Log($"Service {ServiceName} not running -- starting it.");
+        var startOutput = RunHidden("net.exe", $"start {ServiceName}");
+        Log("net start output: " + startOutput);
+        var running = IsServiceRunning();
+        Log($"Service {ServiceName} running after start attempt: {running}");
+        return running;
     }
 
     private static bool IsServiceRunning() =>
         RunHidden("sc.exe", $"query {ServiceName}").Contains("RUNNING");
 
-    private static Process StartNode() => Process.Start(new ProcessStartInfo
+    private static Process StartNode()
     {
-        FileName = "cmd.exe",
-        Arguments = "/c npm run start:desktop",
-        WorkingDirectory = AppDir,
-        UseShellExecute = false,
-        CreateNoWindow = true,
-    })!;
+        Log($"Starting node via cmd /c npm run start:desktop, WorkingDirectory={AppDir}");
+        var process = Process.Start(new ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            Arguments = "/c npm run start:desktop",
+            WorkingDirectory = AppDir,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        })!;
+        return process;
+    }
 
     // Any HTTP response counts as ready, not just 200 -- hitting "/" with no session
     // cookie redirects to /login, which is itself proof the server answered.
@@ -193,8 +228,9 @@ internal static class Program
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
+            RedirectStandardError = true,
         })!;
-        var output = process.StandardOutput.ReadToEnd();
+        var output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
         process.WaitForExit();
         return output;
     }

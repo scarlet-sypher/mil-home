@@ -172,40 +172,56 @@ jobs:
 
           # No dialogs to hang on if an error path is hit on this unattended runner.
           $env:MIL_HOME_LAUNCHER_TEST_MODE = "1"
-          $launcherProc = Start-Process -FilePath $launcherExe -PassThru
-          # OpenBrowser()'s Process.Start(UseShellExecute: true) against an http:// URL
-          # either no-ops or throws inside that one call on a runner with no browser --
-          # either way nothing else in the launcher depends on it, so it doesn't block
-          # the parts under test below.
+          $launcherLog = "$env:TEMP\mil-home-launcher.log"
+          if (Test-Path $launcherLog) { Remove-Item $launcherLog }
 
-          $ready = $false
-          for ($i = 0; $i -lt 20; $i++) {
-            try {
-              $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8000/login" -UseBasicParsing -TimeoutSec 2
-              if ($resp.StatusCode -eq 200) { $ready = $true; break }
-            } catch {}
-            Start-Sleep -Seconds 1
+          try {
+            $launcherProc = Start-Process -FilePath $launcherExe -PassThru
+            # OpenBrowser()'s Process.Start(UseShellExecute: true) against an http:// URL
+            # either no-ops or throws inside that one call on a runner with no browser --
+            # either way nothing else in the launcher depends on it, so it doesn't block
+            # the parts under test below.
+
+            $ready = $false
+            for ($i = 0; $i -lt 20; $i++) {
+              try {
+                $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8000/login" -UseBasicParsing -TimeoutSec 2
+                if ($resp.StatusCode -eq 200) { $ready = $true; break }
+              } catch {}
+              Start-Sleep -Seconds 1
+            }
+            if (-not $ready) { throw "Launcher did not bring the app up within 20s" }
+
+            $service = Get-Service -Name "mil-home-postgresql"
+            if ($service.Status -ne "Running") { throw "Launcher did not start the Postgres service" }
+
+            $nodeBefore = Get-Process -Name node -ErrorAction SilentlyContinue
+            if (-not $nodeBefore) { throw "No node.exe process found after the launcher started the app" }
+            Write-Host "Launcher brought the app up; node.exe PID(s): $($nodeBefore.Id -join ',')"
+
+            # Simulate a closed tab: nothing in this headless run ever loads the page, so
+            # no heartbeats are posted. Wait comfortably past the 13s staleness window,
+            # then confirm the launcher actually killed the app -- concrete, automated
+            # proof of heartbeat-driven teardown, not just a disclosed gap.
+            Start-Sleep -Seconds 20
+
+            $nodeAfter = Get-Process -Name node -ErrorAction SilentlyContinue
+            if ($nodeAfter) { throw "node.exe is still running 20s after heartbeats stopped -- launcher did not enforce the staleness timeout" }
+            Write-Host "Confirmed: launcher killed node.exe after heartbeats stopped."
+
+            Wait-Process -Id $launcherProc.Id -Timeout 5 -ErrorAction SilentlyContinue
           }
-          if (-not $ready) { throw "Launcher did not bring the app up within 20s" }
-
-          $service = Get-Service -Name "mil-home-postgresql"
-          if ($service.Status -ne "Running") { throw "Launcher did not start the Postgres service" }
-
-          $nodeBefore = Get-Process -Name node -ErrorAction SilentlyContinue
-          if (-not $nodeBefore) { throw "No node.exe process found after the launcher started the app" }
-          Write-Host "Launcher brought the app up; node.exe PID(s): $($nodeBefore.Id -join ',')"
-
-          # Simulate a closed tab: nothing in this headless run ever loads the page, so
-          # no heartbeats are posted. Wait comfortably past the 13s staleness window,
-          # then confirm the launcher actually killed the app -- concrete, automated
-          # proof of heartbeat-driven teardown, not just a disclosed gap.
-          Start-Sleep -Seconds 20
-
-          $nodeAfter = Get-Process -Name node -ErrorAction SilentlyContinue
-          if ($nodeAfter) { throw "node.exe is still running 20s after heartbeats stopped -- launcher did not enforce the staleness timeout" }
-          Write-Host "Confirmed: launcher killed node.exe after heartbeats stopped."
-
-          Wait-Process -Id $launcherProc.Id -Timeout 5 -ErrorAction SilentlyContinue
+          finally {
+            # Always dump the launcher's own log -- a WinExe app has no console, so this
+            # is the only way to see what it actually did, pass or fail.
+            Write-Host "----- Launcher log ($launcherLog) -----"
+            if (Test-Path $launcherLog) {
+              Get-Content $launcherLog | ForEach-Object { Write-Host $_ }
+            } else {
+              Write-Host "(no log file found at $launcherLog)"
+            }
+            Write-Host "----- end launcher log -----"
+          }
 
       - name: Smoke test -- silent uninstall cleans up
         shell: pwsh
