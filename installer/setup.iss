@@ -128,6 +128,16 @@ begin
   Result := String(FileContent);
 end;
 
+// Pascal Script has no built-in BoolToStr -- unlike Delphi's SysUtils, it isn't part
+// of Inno Setup's support function set.
+function BoolStr(Value: Boolean): String;
+begin
+  if Value then
+    Result := 'True'
+  else
+    Result := 'False';
+end;
+
 // Returns the last non-blank line of a script's captured output -- the convention our
 // PS1 helpers use to hand back a single value (a port number, a directory path) amid
 // their Write-Host progress lines.
@@ -210,7 +220,7 @@ begin
       ewWaitUntilTerminated, ResultCode);
     PostgresAlreadyProvisioned := (ResultCode = 0);
     PostgresChecked := True;
-    Log('mil-home-postgresql service exists: ' + BoolToStr(PostgresAlreadyProvisioned));
+    Log('mil-home-postgresql service exists: ' + BoolStr(PostgresAlreadyProvisioned));
   end;
   Result := not PostgresAlreadyProvisioned;
 end;
