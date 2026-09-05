@@ -206,11 +206,31 @@ internal static class Program
         return false;
     }
 
-    private static void OpenBrowser() =>
-        Process.Start(new ProcessStartInfo { FileName = AppUrl, UseShellExecute = true });
+    // Best-effort only -- opening the browser must never be able to block the rest of
+    // the launcher (in particular, the heartbeat watch that actually has to run
+    // reliably). ShellExecute against a bare URL can hang on a machine with no default
+    // browser/interactive session to resolve it against (e.g. a headless CI runner), so
+    // this fires on its own thread rather than being awaited inline.
+    private static void OpenBrowser()
+    {
+        new Thread(() =>
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = AppUrl, UseShellExecute = true });
+                Log("OpenBrowser: Process.Start returned normally.");
+            }
+            catch (Exception ex)
+            {
+                Log("OpenBrowser failed (non-fatal): " + ex.Message);
+            }
+        })
+        { IsBackground = true }.Start();
+    }
 
     private static void WatchHeartbeatAndKill(Process node)
     {
+        Log("Starting heartbeat watch loop.");
         // Track "last time the value changed" on our own clock rather than parsing the
         // timestamp the page wrote -- only whether a new heartbeat landed matters, not
         // what time it claims. Starting lastChange at "now" (before any heartbeat could
@@ -227,6 +247,7 @@ internal static class Program
                 lastChange = DateTime.UtcNow;
             }
         }
+        Log("Heartbeat stale threshold reached -- killing node process tree.");
         KillTree(node);
     }
 
