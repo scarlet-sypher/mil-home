@@ -213,6 +213,18 @@ internal static class Program
     // this fires on its own thread rather than being awaited inline.
     private static void OpenBrowser()
     {
+        // windows-latest CI runners actually ship Edge by default -- if it really opens
+        // and loads the page, the HeartbeatBeacon component starts firing genuine
+        // heartbeats, and the "simulated closed tab" smoke test would never see the
+        // staleness timeout fire (correctly, since a real open tab should keep the app
+        // alive). The smoke test only ever checks HTTP readiness directly, never
+        // actually needs a browser, so skip opening one in TestMode entirely.
+        if (TestMode)
+        {
+            Log("TestMode: skipping OpenBrowser.");
+            return;
+        }
+
         new Thread(() =>
         {
             try
