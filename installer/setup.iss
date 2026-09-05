@@ -38,10 +38,22 @@ DisableProgramGroupPage=yes
 ; each to {tmp} automatically the moment a [Run]/[UninstallRun] entry below references
 ; it via "{tmp}\...". Code-section functions that need one *outside* those two sections
 ; (the NeedsNode/GetChosenPort checks) call ExtractTemporaryFile explicitly first.
+; dontcopy files always land flat in {tmp} regardless of DestDir -- DestDir is kept as
+; "{tmp}" everywhere below (not a subfolder) to match that actual behavior, since
+; ExtractTemporaryFile and any "{tmp}\..." reference must use the plain filename only.
+; Each script is also listed individually rather than via a "*.ps1" wildcard: the
+; singular ExtractTemporaryFile cannot resolve a specific match out of a wildcard-sourced
+; dontcopy entry (that's what ExtractTemporaryFiles, plural, is for) -- named entries
+; sidestep that entirely.
 Source: "redist\node-installer.msi"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "redist\postgresql-installer.exe"; DestDir: "{tmp}"; Flags: dontcopy
-Source: "scripts\*.ps1"; DestDir: "{tmp}\scripts"; Flags: dontcopy
-Source: "templates\env.template"; DestDir: "{tmp}\templates"; Flags: dontcopy
+Source: "scripts\Check-Node.ps1"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "scripts\Find-FreePort.ps1"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "scripts\Wait-PostgresReady.ps1"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "scripts\Secure-PostgresNetwork.ps1"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "scripts\Provision-Database.ps1"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "scripts\Write-Env.ps1"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "templates\env.template"; DestDir: "{tmp}"; Flags: dontcopy
 
 ; The pre-built app itself -- this is what actually stays in {app}.
 Source: "staging\app\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
@@ -60,19 +72,19 @@ Filename: "{tmp}\postgresql-installer.exe"; \
     StatusMsg: "Installing dedicated PostgreSQL instance..."; Check: NeedsPostgresProvisioning; Flags: waituntilterminated
 
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\scripts\Wait-PostgresReady.ps1"" -PsqlPath ""{app}\pgsql\bin\psql.exe"" -Port {code:GetChosenPort} -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}"; \
+    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\Wait-PostgresReady.ps1"" -PsqlPath ""{app}\pgsql\bin\psql.exe"" -Port {code:GetChosenPort} -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}"; \
     StatusMsg: "Waiting for PostgreSQL to start..."; Check: NeedsPostgresProvisioning; Flags: waituntilterminated
 
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\scripts\Secure-PostgresNetwork.ps1"" -DataDir ""C:\ProgramData\MIL-HOME\pgdata"" -PsqlPath ""{app}\pgsql\bin\psql.exe"" -ServiceName {#PgServiceName} -Port {code:GetChosenPort} -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}"; \
+    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\Secure-PostgresNetwork.ps1"" -DataDir ""C:\ProgramData\MIL-HOME\pgdata"" -PsqlPath ""{app}\pgsql\bin\psql.exe"" -ServiceName {#PgServiceName} -Port {code:GetChosenPort} -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}"; \
     StatusMsg: "Restricting PostgreSQL to local connections only..."; Check: NeedsPostgresProvisioning; Flags: waituntilterminated
 
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\scripts\Provision-Database.ps1"" -PsqlPath ""{app}\pgsql\bin\psql.exe"" -Port {code:GetChosenPort} -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}"; \
+    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\Provision-Database.ps1"" -PsqlPath ""{app}\pgsql\bin\psql.exe"" -Port {code:GetChosenPort} -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}"; \
     StatusMsg: "Creating the application database..."; Check: NeedsPostgresProvisioning; Flags: waituntilterminated
 
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\scripts\Write-Env.ps1"" -TemplatePath ""{tmp}\templates\env.template"" -OutputPath ""{app}\.env"" -DbPort {code:GetChosenPort}"; \
+    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\Write-Env.ps1"" -TemplatePath ""{tmp}\env.template"" -OutputPath ""{app}\.env"" -DbPort {code:GetChosenPort}"; \
     StatusMsg: "Writing configuration..."; Flags: waituntilterminated
 
 Filename: "{code:GetNodeExe}"; \
@@ -165,7 +177,7 @@ var
 begin
   if not NodeChecked then
   begin
-    Output := RunPowerShell('scripts\Check-Node.ps1', '-MinVersion ' + '{#MinNodeVersion}', ResultCode);
+    Output := RunPowerShell('Check-Node.ps1', '-MinVersion ' + '{#MinNodeVersion}', ResultCode);
     NodeAdequate := (ResultCode = 0);
     if NodeAdequate then
       NodeDir := LastLine(Output);
@@ -254,7 +266,7 @@ begin
 
     if ChosenPortStr = '' then
     begin
-      Output := RunPowerShell('scripts\Find-FreePort.ps1', '-PreferredPort {#PgPreferredPort}', ResultCode);
+      Output := RunPowerShell('Find-FreePort.ps1', '-PreferredPort {#PgPreferredPort}', ResultCode);
       if ResultCode <> 0 then
         RaiseException('Could not find a free port for the dedicated PostgreSQL instance: ' + Output);
       ChosenPortStr := LastLine(Output);
