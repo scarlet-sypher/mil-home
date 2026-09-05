@@ -124,7 +124,19 @@ jobs:
         run: |
           $setup = Get-ChildItem -Path installer -Filter "mil-home-setup.exe" -Recurse | Select-Object -First 1
           if (-not $setup) { throw "Compiled installer not found" }
-          Start-Process -FilePath $setup.FullName -ArgumentList "/verysilent","/suppressmsgboxes","/norestart" -Wait
+          $installLog = "C:\mil-home-install.log"
+          Start-Process -FilePath $setup.FullName -ArgumentList "/verysilent","/suppressmsgboxes","/norestart","/LOG=$installLog" -Wait
+
+          # Dump Inno's own step-by-step log unconditionally, before any assertions --
+          # so a failure below still leaves this in the CI output to debug from,
+          # instead of guessing blind at what each [Run] entry actually did.
+          Write-Host "----- Inno Setup install log ($installLog) -----"
+          if (Test-Path $installLog) {
+            Get-Content $installLog | ForEach-Object { Write-Host $_ }
+          } else {
+            Write-Host "(no log file found at $installLog)"
+          }
+          Write-Host "----- end install log -----"
 
           $service = Get-Service -Name "mil-home-postgresql" -ErrorAction SilentlyContinue
           if (-not $service) { throw "mil-home-postgresql service was not created" }
