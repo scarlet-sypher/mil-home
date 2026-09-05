@@ -70,6 +70,24 @@ internal static class Program
 
     private static async Task<int> Main()
     {
+        // A crash here would otherwise leave zero trace -- a WinExe app has no console
+        // to print an unhandled-exception dump to, so it would just silently vanish.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            Log("UNHANDLED EXCEPTION: " + e.ExceptionObject);
+
+        try
+        {
+            return await RunAsync();
+        }
+        catch (Exception ex)
+        {
+            Log("UNHANDLED EXCEPTION in RunAsync: " + ex);
+            return 1;
+        }
+    }
+
+    private static async Task<int> RunAsync()
+    {
         Log($"Launcher starting. AppDir={AppDir} ProcessPath={Environment.ProcessPath} TestMode={TestMode}");
 
         // Already running (e.g. a second double-click)? Open another tab, don't start
@@ -95,7 +113,7 @@ internal static class Program
         var node = StartNode();
         Log($"Started node process, PID={node.Id}");
 
-        if (!await WaitForReady())
+        if (!await WaitForReady(node))
         {
             Log("App did not become ready within the timeout.");
             KillTree(node);
@@ -132,14 +150,28 @@ internal static class Program
     private static Process StartNode()
     {
         Log($"Starting node via cmd /c npm run start:desktop, WorkingDirectory={AppDir}");
-        var process = Process.Start(new ProcessStartInfo
+        var process = new Process
         {
-            FileName = "cmd.exe",
-            Arguments = "/c npm run start:desktop",
-            WorkingDirectory = AppDir,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        })!;
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = "/c npm run start:desktop",
+                WorkingDirectory = AppDir,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            },
+            EnableRaisingEvents = true,
+        };
+        // The app's own output is the single most useful thing to see if it never
+        // becomes ready -- log every line as it arrives rather than only at the end,
+        // in case the process is killed before exiting on its own.
+        process.OutputDataReceived += (_, e) => { if (e.Data != null) Log("[node stdout] " + e.Data); };
+        process.ErrorDataReceived += (_, e) => { if (e.Data != null) Log("[node stderr] " + e.Data); };
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
         return process;
     }
 
@@ -158,13 +190,19 @@ internal static class Program
         }
     }
 
-    private static async Task<bool> WaitForReady()
+    private static async Task<bool> WaitForReady(Process node)
     {
         for (var elapsed = 0; elapsed < ReadyTimeoutMs; elapsed += ReadyPollMs)
         {
+            if (node.HasExited)
+            {
+                Log($"node process exited early (before becoming ready), ExitCode={node.ExitCode}");
+                return false;
+            }
             if (await UrlResponds()) return true;
             await Task.Delay(ReadyPollMs);
         }
+        Log("WaitForReady loop finished without the app ever responding (timed out).");
         return false;
     }
 
