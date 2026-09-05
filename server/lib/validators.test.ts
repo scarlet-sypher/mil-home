@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { signupSchema, passwordSchema } from "./validators";
+import { signupSchema, passwordSchema, setupCredentialsSchema, changeCredentialsSchema } from "./validators";
 
 describe("passwordSchema", () => {
   it("rejects a password shorter than 10 characters", () => {
@@ -41,5 +41,64 @@ describe("signupSchema", () => {
       confirmPassword: "Different1!",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("setupCredentialsSchema", () => {
+  it("accepts a valid payload", () => {
+    const result = setupCredentialsSchema.safeParse({
+      username: "admin",
+      email: "admin@milhome.local",
+      newPassword: "Abcdefgh1!",
+      confirmNewPassword: "Abcdefgh1!",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects when confirmNewPassword does not match", () => {
+    const result = setupCredentialsSchema.safeParse({
+      username: "admin",
+      email: "admin@milhome.local",
+      newPassword: "Abcdefgh1!",
+      confirmNewPassword: "Different1!",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("has no currentPassword field, unlike changeCredentialsSchema", () => {
+    const result = setupCredentialsSchema.safeParse({
+      username: "admin",
+      email: "admin@milhome.local",
+      newPassword: "Abcdefgh1!",
+      confirmNewPassword: "Abcdefgh1!",
+      currentPassword: "should be ignored",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect("currentPassword" in result.data).toBe(false);
+    }
+  });
+});
+
+describe("changeCredentialsSchema", () => {
+  it("requires currentPassword", () => {
+    const result = changeCredentialsSchema.safeParse({
+      username: "admin",
+      email: "admin@milhome.local",
+      newPassword: "Abcdefgh1!",
+      confirmNewPassword: "Abcdefgh1!",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a valid payload", () => {
+    const result = changeCredentialsSchema.safeParse({
+      currentPassword: "OldPassword1!",
+      username: "admin",
+      email: "admin@milhome.local",
+      newPassword: "Abcdefgh1!",
+      confirmNewPassword: "Abcdefgh1!",
+    });
+    expect(result.success).toBe(true);
   });
 });

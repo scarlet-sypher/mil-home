@@ -15,8 +15,11 @@ import {
   FileText,
   LogOut,
   UserCircle,
+  KeyRound,
 } from "lucide-react";
 import { capitalizeWords } from "@/client/lib/format-text";
+import { Modal } from "@/client/components/Modal";
+import { AdminCredentialsForm } from "@/client/components/AdminCredentialsForm";
 
 const NAV_LINKS = [
   { href: "/home", label: "Dashboard", icon: LayoutDashboard },
@@ -43,7 +46,9 @@ export function TopNav() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
+  const [role, setRole] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
+  const [changeCredentialsOpen, setChangeCredentialsOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,10 +57,12 @@ export function TopNav() {
       .then((data) => {
         setEmail(data.user?.email ?? "");
         setUsername(data.user?.username ?? "");
+        setRole(data.user?.role ?? "");
       })
       .catch(() => {
         setEmail("");
         setUsername("");
+        setRole("");
       });
   }, []);
 
@@ -110,11 +117,32 @@ export function TopNav() {
         </button>
 
         {profileOpen && (
-          <div className="absolute right-0 top-full z-30 mt-2 w-56 rounded-md border border-white/10 bg-base-dark py-2 text-white shadow-lg">
+          <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-md border border-white/10 bg-base-dark py-2 text-white shadow-lg">
             <div className="border-b border-white/10 px-4 pb-2">
-              <p className="truncate text-sm font-medium">{username ? capitalizeWords(username) : "—"}</p>
-              <p className="truncate text-xs text-slate-300">{email}</p>
+              <p className="truncate text-sm font-medium">
+                <span className="text-slate-400">Username: </span>
+                {username ? capitalizeWords(username) : "—"}
+              </p>
+              <p className="truncate text-xs text-slate-300">
+                <span className="text-slate-400">Email: </span>
+                {email}
+              </p>
             </div>
+            {role === "ADMIN" && (
+              <>
+                <button
+                  onClick={() => {
+                    setChangeCredentialsOpen(true);
+                    setProfileOpen(false);
+                  }}
+                  className="flex w-full items-center gap-1.5 whitespace-nowrap px-4 py-2 text-sm text-slate-300 transition-colors duration-150 hover:bg-white/10 hover:text-white"
+                >
+                  <KeyRound size={16} className="shrink-0" />
+                  Change Email &amp; Password
+                </button>
+                <div className="my-1 border-t border-white/10" />
+              </>
+            )}
             <button
               onClick={handleLogout}
               className="flex w-full items-center gap-1.5 px-4 py-2 text-sm text-slate-300 transition-colors duration-150 hover:bg-white/10 hover:text-white"
@@ -125,6 +153,20 @@ export function TopNav() {
           </div>
         )}
       </div>
+
+      {changeCredentialsOpen && (
+        <Modal title="Change Email & Password" onClose={() => setChangeCredentialsOpen(false)}>
+          <AdminCredentialsForm
+            mode="change"
+            initialEmail={email}
+            initialUsername={username}
+            onSuccess={() => {
+              setChangeCredentialsOpen(false);
+              router.push("/login");
+            }}
+          />
+        </Modal>
+      )}
     </header>
   );
 }

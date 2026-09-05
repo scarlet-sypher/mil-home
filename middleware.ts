@@ -8,7 +8,9 @@ const PUBLIC_PATHS = ["/login", "/signup", "/account"];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublic =
-    PUBLIC_PATHS.some((path) => pathname.startsWith(path)) || pathname.startsWith("/api/auth");
+    PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/heartbeat");
   const hasCookie = Boolean(request.cookies.get(COOKIE_NAME)?.value);
 
   if (!isPublic && !hasCookie) {
