@@ -113,6 +113,28 @@ var
   PortResolved: Boolean;
   ChosenPortStr: String;
 
+// Inno's documented "auto-extract a dontcopy file the moment a [Run]/[UninstallRun]
+// entry references it via {tmp}\..." did not reliably happen in practice (proven by a
+// real CI run: postgresql-installer.exe's own [Run] entry failed with "CreateProcess
+// failed; code 2, the system cannot find the file specified" even though its Filename
+// was the plain literal "{tmp}\postgresql-installer.exe"). Rather than keep trusting
+// that implicit behavior, every dontcopy file is explicitly extracted exactly once,
+// upfront, via this universally-called entry point -- removing the dependency on
+// exactly when/whether Inno's automatic extraction fires.
+function InitializeSetup(): Boolean;
+begin
+  ExtractTemporaryFile('node-installer.msi');
+  ExtractTemporaryFile('postgresql-installer.exe');
+  ExtractTemporaryFile('Check-Node.ps1');
+  ExtractTemporaryFile('Find-FreePort.ps1');
+  ExtractTemporaryFile('Wait-PostgresReady.ps1');
+  ExtractTemporaryFile('Secure-PostgresNetwork.ps1');
+  ExtractTemporaryFile('Provision-Database.ps1');
+  ExtractTemporaryFile('Write-Env.ps1');
+  ExtractTemporaryFile('env.template');
+  Result := True;
+end;
+
 // Runs a bundled PowerShell script (extracted from the installer's own payload) and
 // captures both its exit code and stdout. Only needed for functions called from
 // outside [Run]/[UninstallRun] (Check: and {code:} substitutions) -- entries declared
