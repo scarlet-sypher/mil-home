@@ -107,7 +107,8 @@ var
 // directly in those two sections extract their "{tmp}\..." files automatically.
 function RunPowerShell(const ScriptRelPath, Arguments: String; var ResultCode: Integer): String;
 var
-  ScriptPath, OutFile, CmdLine, Output: String;
+  ScriptPath, OutFile, CmdLine: String;
+  FileContent: AnsiString; // LoadStringFromFile's var-parameter requires AnsiString exactly
 begin
   ExtractTemporaryFile(ScriptRelPath);
   ScriptPath := ExpandConstant('{tmp}\' + ScriptRelPath);
@@ -118,13 +119,13 @@ begin
 
   Exec(ExpandConstant('{cmd}'), CmdLine, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
-  Output := '';
+  FileContent := '';
   if FileExists(OutFile) then
   begin
-    LoadStringFromFile(OutFile, Output);
+    LoadStringFromFile(OutFile, FileContent);
     DeleteFile(OutFile);
   end;
-  Result := Output;
+  Result := String(FileContent);
 end;
 
 // Returns the last non-blank line of a script's captured output -- the convention our
@@ -217,7 +218,9 @@ end;
 function GetChosenPort(Param: String): String;
 var
   ResultCode: Integer;
-  Output, EnvContent: String;
+  Output: String;
+  EnvContentRaw: AnsiString; // LoadStringFromFile's var-parameter requires AnsiString exactly
+  EnvContent: String;
   P1, P2: Integer;
 begin
   if not PortResolved then
@@ -226,7 +229,8 @@ begin
     // reuse it so a retried install doesn't silently pick a different free port.
     if FileExists(ExpandConstant('{app}\.env')) then
     begin
-      LoadStringFromFile(ExpandConstant('{app}\.env'), EnvContent);
+      LoadStringFromFile(ExpandConstant('{app}\.env'), EnvContentRaw);
+      EnvContent := String(EnvContentRaw);
       P1 := Pos('127.0.0.1:', EnvContent);
       if P1 > 0 then
       begin
