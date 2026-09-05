@@ -27,6 +27,33 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const setupCredentialsSchema = z
+  .object({
+    username: z.string().trim().min(1, "Username is required"),
+    email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+    newPassword: passwordSchema,
+    confirmNewPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: "Passwords do not match",
+    path: ["confirmNewPassword"],
+  });
+export type SetupCredentialsInput = z.infer<typeof setupCredentialsSchema>;
+
+export const changeCredentialsSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    username: z.string().trim().min(1, "Username is required"),
+    email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+    newPassword: passwordSchema,
+    confirmNewPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: "Passwords do not match",
+    path: ["confirmNewPassword"],
+  });
+export type ChangeCredentialsInput = z.infer<typeof changeCredentialsSchema>;
+
 export const conditionEnum = z.enum(["FIT", "UNFIT"]);
 
 export const quarterVacantCreateSchema = z.object({
