@@ -3,7 +3,7 @@ name: Build Windows installer
 on:
   push:
     branches: [master]
-    paths:
+    paths: &installer_paths
       - "installer/**"
       - "launcher/**"
       - ".github/workflows/build-installer.yml"
@@ -15,6 +15,9 @@ on:
       - "next.config.ts"
       - "middleware.ts"
       - "instrumentation.ts"
+  pull_request:
+    branches: [master]
+    paths: *installer_paths
   workflow_dispatch: {}
 
 env:
