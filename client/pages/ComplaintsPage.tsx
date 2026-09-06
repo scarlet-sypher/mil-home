@@ -151,12 +151,12 @@ export function ComplaintsPage({
         <DataTable
           columns={[
             { header: "S/No.", render: (_c: Complaint, i: number) => i + 1, exportValue: (_c, i) => i + 1 },
+            { header: "Qtr Loc", render: (c: Complaint) => c.quarter.colony, sortValue: (c) => c.quarter.colony },
+            { header: "Qtr No.", render: (c: Complaint) => c.quarter.quarterNo, sortValue: (c) => c.quarter.quarterNo },
             { header: "Army No.", render: (c: Complaint) => c.applicant.serviceNo, sortValue: (c) => c.applicant.serviceNo },
             { header: "Rank", render: (c: Complaint) => c.applicant.rank, sortValue: (c) => c.applicant.rank },
             { header: "Name", render: (c: Complaint) => c.applicant.name, sortValue: (c) => c.applicant.name },
             { header: "Unit", render: (c: Complaint) => c.applicant.unit, sortValue: (c) => c.applicant.unit },
-            { header: "Qtr Loc", render: (c: Complaint) => c.quarter.colony, sortValue: (c) => c.quarter.colony },
-            { header: "Qtr No.", render: (c: Complaint) => c.quarter.quarterNo, sortValue: (c) => c.quarter.quarterNo },
             {
               header: "Description",
               render: (c: Complaint) => <RemarkCell text={c.description} label="Complaint Description" />,

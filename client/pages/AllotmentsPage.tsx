@@ -160,12 +160,12 @@ export function AllotmentsPage({
         <DataTable
           columns={[
             { header: "S/No.", render: (_a: Allotment, i: number) => i + 1, exportValue: (_a, i) => i + 1 },
+            { header: "Qtr Loc", render: (a: Allotment) => a.quarter.colony, sortValue: (a) => a.quarter.colony },
+            { header: "Qtr No.", render: (a: Allotment) => a.quarter.quarterNo, sortValue: (a) => a.quarter.quarterNo },
             { header: "Army No.", render: (a: Allotment) => a.applicant.serviceNo, sortValue: (a) => a.applicant.serviceNo },
             { header: "Rank", render: (a: Allotment) => a.applicant.rank, sortValue: (a) => a.applicant.rank },
             { header: "Name", render: (a: Allotment) => a.applicant.name, sortValue: (a) => a.applicant.name },
             { header: "Unit", render: (a: Allotment) => a.applicant.unit, sortValue: (a) => a.applicant.unit },
-            { header: "Qtr Loc", render: (a: Allotment) => a.quarter.colony, sortValue: (a) => a.quarter.colony },
-            { header: "Qtr No.", render: (a: Allotment) => a.quarter.quarterNo, sortValue: (a) => a.quarter.quarterNo },
             { header: "Authority", render: (a: Allotment) => <StatusBadge status={a.authorityStatus} />, sortValue: (a) => a.authorityStatus },
             { header: "Order", render: (a: Allotment) => a.orderRef ?? "—", sortValue: (a) => a.orderRef },
             {

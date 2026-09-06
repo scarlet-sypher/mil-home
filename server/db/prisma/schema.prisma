@@ -8,17 +8,25 @@ datasource db {
 }
 
 model User {
-  id             Int       @id @default(autoincrement())
-  email          String    @unique
-  username       String
-  passwordHash   String
-  failedAttempts Int       @default(0)
-  lockedUntil    DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  sessions       Session[]
+  id                 Int       @id @default(autoincrement())
+  email              String    @unique
+  username           String
+  passwordHash       String
+  role               Role      @default(USER)
+  mustChangePassword Boolean   @default(false)
+  mustChangeEmail    Boolean   @default(false)
+  failedAttempts     Int       @default(0)
+  lockedUntil        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  sessions           Session[]
 
   @@map("users")
+}
+
+enum Role {
+  ADMIN
+  USER
 }
 
 model Session {

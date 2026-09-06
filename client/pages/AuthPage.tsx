@@ -192,7 +192,7 @@ export function AuthPage({ defaultTab = "login" }: { defaultTab?: Tab }) {
             </p>
           </div>
           <p className="mt-6 text-2xl font-bold tracking-wide sm:mt-8 sm:text-3xl">
-            MIL-HOME <span className="font-normal text-slate-300">: Station Housing</span>
+            MIL-HOME <span className="font-normal text-slate-300">: RMS-HOME</span>
           </p>
         </div>
         <Image src="/images/logo-right.png" alt="" width={160} height={160} className="h-32 w-32 shrink-0 sm:h-40 sm:w-40" />
