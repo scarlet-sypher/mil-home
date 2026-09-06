@@ -346,20 +346,43 @@ end;
 procedure RunCriticalStep(const FileName, Parameters, WorkingDir, StepDescription: String);
 var
   ResultCode: Integer;
+  OutFile, CmdLine: String;
+  OutputRaw: AnsiString; // LoadStringFromFile's var-parameter requires AnsiString exactly
+  Output: String;
 begin
   WizardForm.StatusLabel.Caption := StepDescription;
   WizardForm.Update;
+  Log('RunCriticalStep: starting "' + StepDescription + '"');
 
-  if not Exec(FileName, Parameters, WorkingDir, SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  // Route through cmd.exe to capture stdout+stderr -- Exec() alone gives no way to see
+  // what the process actually printed, which is exactly why the first time this step
+  // failed for real, all we knew was "exit code 1" with no clue why. Same technique
+  // RunPowerShell already uses successfully above.
+  OutFile := ExpandConstant('{tmp}') + '\critical_step_' + IntToStr(Random(1000000)) + '.txt';
+  CmdLine := '/C ""' + FileName + '" ' + Parameters + ' > "' + OutFile + '" 2>&1"';
+
+  if not Exec(ExpandConstant('{cmd}'), CmdLine, WorkingDir, SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
-    RaiseException('MIL-HOME setup failed at "' + StepDescription + '": the process could not be started (' +
+    RaiseException('MIL-HOME setup failed at "' + StepDescription + '": cmd.exe itself could not be started (' +
       SysErrorMessage(ResultCode) + ').');
   end;
 
+  OutputRaw := '';
+  if FileExists(OutFile) then
+  begin
+    LoadStringFromFile(OutFile, OutputRaw);
+    DeleteFile(OutFile);
+  end;
+  Output := String(OutputRaw);
+  if Length(Output) > 4000 then
+    Output := '...(truncated)...' + Copy(Output, Length(Output) - 4000, 4000);
+
+  Log('RunCriticalStep: "' + StepDescription + '" exit code=' + IntToStr(ResultCode) + #13#10 + 'Output: ' + Output);
+
   if ResultCode <> 0 then
-    RaiseException('MIL-HOME setup failed at "' + StepDescription + '" (exit code ' + IntToStr(ResultCode) + ').' + #13#10 +
-      'Installation cannot safely continue. A diagnostic log was saved under %TEMP%\Setup Log*.txt -- ' +
-      'please include it if you report this.');
+    RaiseException('MIL-HOME setup failed at "' + StepDescription + '" (exit code ' + IntToStr(ResultCode) + ').' + #13#10#13#10 +
+      'Output:' + #13#10 + Output + #13#10#13#10 +
+      'A diagnostic log was saved under %TEMP%\Setup Log*.txt -- please include it if you report this.');
 end;
 
 procedure PerformCriticalPostInstallSteps();
