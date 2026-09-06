@@ -32,6 +32,12 @@ OutputBaseFilename=mil-home-setup
 Compression=lzma2
 SolidCompression=yes
 DisableProgramGroupPage=yes
+; Every real install now writes a diagnostic log to %TEMP%\Setup Log*.txt
+; automatically, with no /LOG= flag needed -- the only way this bug (a critical step
+; failing silently, leaving a completely empty database, while still reporting
+; "installed successfully") was ever actually found was a user's own manual log
+; capture after the fact.
+SetupLogging=yes
 
 [Files]
 ; Auxiliary installer-time files. dontcopy: never left behind in {app}; Inno extracts
@@ -71,29 +77,14 @@ Filename: "{tmp}\postgresql-installer.exe"; \
     Parameters: "--mode unattended --unattendedmodeui minimal --prefix ""{app}\pgsql"" --datadir ""C:\ProgramData\MIL-HOME\pgdata"" --servicename {#PgServiceName} --serverport {code:GetChosenPort} --superpassword {#PgSuperPassword} --disable-components pgAdmin,stackbuilder"; \
     StatusMsg: "Installing dedicated PostgreSQL instance..."; Check: NeedsPostgresProvisioning; Flags: waituntilterminated
 
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\Wait-PostgresReady.ps1"" -PsqlPath ""{app}\pgsql\bin\psql.exe"" -Port {code:GetChosenPort} -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}"; \
-    StatusMsg: "Waiting for PostgreSQL to start..."; Check: NeedsPostgresProvisioning; Flags: waituntilterminated
-
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\Secure-PostgresNetwork.ps1"" -DataDir ""C:\ProgramData\MIL-HOME\pgdata"" -PsqlPath ""{app}\pgsql\bin\psql.exe"" -ServiceName {#PgServiceName} -Port {code:GetChosenPort} -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}"; \
-    StatusMsg: "Restricting PostgreSQL to local connections only..."; Check: NeedsPostgresProvisioning; Flags: waituntilterminated
-
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\Provision-Database.ps1"" -PsqlPath ""{app}\pgsql\bin\psql.exe"" -Port {code:GetChosenPort} -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}"; \
-    StatusMsg: "Creating the application database..."; Check: NeedsPostgresProvisioning; Flags: waituntilterminated
-
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\Write-Env.ps1"" -TemplatePath ""{tmp}\env.template"" -OutputPath ""{app}\.env"" -DbPort {code:GetChosenPort}"; \
-    StatusMsg: "Writing configuration..."; Flags: waituntilterminated
-
-Filename: "{code:GetNodeExe}"; \
-    Parameters: """{code:GetNpxCli}"" prisma generate --schema=server\db\prisma\schema.prisma"; \
-    WorkingDir: "{app}"; StatusMsg: "Generating Prisma client..."; Flags: waituntilterminated
-
-Filename: "{code:GetNodeExe}"; \
-    Parameters: """{code:GetNpmCli}"" run db:deploy"; \
-    WorkingDir: "{app}"; StatusMsg: "Applying database migrations..."; Flags: waituntilterminated
+; Everything from here on (Postgres readiness through the final migration) is run from
+; Pascal instead of declared here -- see PerformCriticalPostInstallSteps, invoked from
+; CurStepChanged(ssPostInstall). A plain [Run] entry has no way to abort the install or
+; even surface an error if the program it runs exits nonzero; Inno just silently moves
+; on to the next line. That's exactly how this app ended up "installed successfully"
+; with a completely empty database once before -- db:deploy (or an earlier step)
+; failed and nothing noticed. RunCriticalStep below checks every exit code and aborts
+; the whole install with a visible error the moment one of these fails.
 
 [UninstallRun]
 ; Only ever acts on the literal service name this installer created -- there is no code
@@ -346,4 +337,76 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usPostUninstall then
     RemoveOrphanedPostgresUninstallEntry();
+end;
+
+// Runs a program and aborts the whole install with a visible error if it can't be
+// started or exits nonzero -- unlike a plain [Run] entry, which just moves on to the
+// next line either way. StepDescription appears both in the wizard's status text and
+// in the error message if this step is what fails.
+procedure RunCriticalStep(const FileName, Parameters, WorkingDir, StepDescription: String);
+var
+  ResultCode: Integer;
+begin
+  WizardForm.StatusLabel.Caption := StepDescription;
+  WizardForm.Update;
+
+  if not Exec(FileName, Parameters, WorkingDir, SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    RaiseException('MIL-HOME setup failed at "' + StepDescription + '": the process could not be started (' +
+      SysErrorMessage(ResultCode) + ').');
+  end;
+
+  if ResultCode <> 0 then
+    RaiseException('MIL-HOME setup failed at "' + StepDescription + '" (exit code ' + IntToStr(ResultCode) + ').' + #13#10 +
+      'Installation cannot safely continue. A diagnostic log was saved under %TEMP%\Setup Log*.txt -- ' +
+      'please include it if you report this.');
+end;
+
+procedure PerformCriticalPostInstallSteps();
+var
+  PowerShellExe, PgPsqlExe, TmpDir, AppDir, Port: String;
+begin
+  PowerShellExe := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+  PgPsqlExe := ExpandConstant('{app}\pgsql\bin\psql.exe');
+  TmpDir := ExpandConstant('{tmp}');
+  AppDir := ExpandConstant('{app}');
+  Port := GetChosenPort('');
+
+  if NeedsPostgresProvisioning then
+  begin
+    RunCriticalStep(PowerShellExe,
+      '-NoProfile -ExecutionPolicy Bypass -File "' + TmpDir + '\Wait-PostgresReady.ps1" -PsqlPath "' +
+        PgPsqlExe + '" -Port ' + Port + ' -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}',
+      TmpDir, 'Waiting for PostgreSQL to start...');
+
+    RunCriticalStep(PowerShellExe,
+      '-NoProfile -ExecutionPolicy Bypass -File "' + TmpDir + '\Secure-PostgresNetwork.ps1" -DataDir ' +
+        '"C:\ProgramData\MIL-HOME\pgdata" -PsqlPath "' + PgPsqlExe + '" -ServiceName {#PgServiceName} -Port ' +
+        Port + ' -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}',
+      TmpDir, 'Restricting PostgreSQL to local connections only...');
+
+    RunCriticalStep(PowerShellExe,
+      '-NoProfile -ExecutionPolicy Bypass -File "' + TmpDir + '\Provision-Database.ps1" -PsqlPath "' +
+        PgPsqlExe + '" -Port ' + Port + ' -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}',
+      TmpDir, 'Creating the application database...');
+  end;
+
+  RunCriticalStep(PowerShellExe,
+    '-NoProfile -ExecutionPolicy Bypass -File "' + TmpDir + '\Write-Env.ps1" -TemplatePath "' +
+      TmpDir + '\env.template" -OutputPath "' + AppDir + '\.env" -DbPort ' + Port,
+    TmpDir, 'Writing configuration...');
+
+  RunCriticalStep(GetNodeExe(''),
+    '"' + GetNpxCli('') + '" prisma generate --schema=server\db\prisma\schema.prisma',
+    AppDir, 'Generating Prisma client...');
+
+  RunCriticalStep(GetNodeExe(''),
+    '"' + GetNpmCli('') + '" run db:deploy',
+    AppDir, 'Applying database migrations...');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    PerformCriticalPostInstallSteps();
 end;
