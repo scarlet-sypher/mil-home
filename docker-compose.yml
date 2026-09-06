@@ -1,15 +1,15 @@
 services:
   postgres:
     image: postgres:16
-    container_name: mil-home-postgres
+    container_name: rms-home-postgres
     environment:
-      POSTGRES_USER: mil_home
-      POSTGRES_PASSWORD: mil_home_dev
-      POSTGRES_DB: mil_home
+      POSTGRES_USER: rms_home
+      POSTGRES_PASSWORD: rms_home_dev
+      POSTGRES_DB: rms_home
     ports:
       - "5433:5432"
     volumes:
-      - mil-home-postgres-data:/var/lib/postgresql/data
+      - rms-home-postgres-data:/var/lib/postgresql/data
 
 volumes:
-  mil-home-postgres-data:
+  rms-home-postgres-data:

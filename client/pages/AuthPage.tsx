@@ -190,9 +190,7 @@ export function AuthPage({ defaultTab = "login" }: { defaultTab?: Tab }) {
               Dimapur
             </p>
           </div>
-          <p className="mt-6 text-2xl font-bold tracking-wide sm:mt-8 sm:text-3xl">
-            MIL-HOME <span className="font-normal text-slate-300">: RMS-HOME</span>
-          </p>
+          <p className="mt-6 text-2xl font-bold tracking-wide sm:mt-8 sm:text-3xl">RMS-HOME</p>
         </div>
         <Image src="/images/logo-right.png" alt="" width={160} height={160} className="h-32 w-32 shrink-0 sm:h-40 sm:w-40" />
       </div>
@@ -223,10 +221,13 @@ export function AuthPage({ defaultTab = "login" }: { defaultTab?: Tab }) {
         </div>
       </div>
 
-      {/* Bottom: thin tagline banner */}
+      {/* Bottom: thin tagline banner + credits */}
       <div className="border-t border-white/10 bg-sidebar-base px-4 py-3 text-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-accent sm:text-sm">
           Serving Together, Securing Tomorrow
+        </p>
+        <p className="mt-1.5 text-xs text-slate-400">
+          Developed by Stn HQ, Dimapur &middot; Copyright &copy; Adm Comdt Stn HQ, Dimapur
         </p>
       </div>
     </div>

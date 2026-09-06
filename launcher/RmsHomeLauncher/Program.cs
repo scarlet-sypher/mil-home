@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace MilHomeLauncher;
+namespace RmsHomeLauncher;
 
 // The daily launcher behind the desktop/Start Menu shortcut: ensures the dedicated
 // Postgres service is up, starts the app server, waits for it to answer, opens the
@@ -15,7 +15,7 @@ namespace MilHomeLauncher;
 // stop the server. Postgres itself is never stopped here; it's a steady-state service.
 internal static class Program
 {
-    private const string ServiceName = "mil-home-postgresql";
+    private const string ServiceName = "rms-home-postgresql";
     private const int AppPort = 8000;
     // Not a const interpolated string -- kept as a plain concatenation to avoid relying
     // on a C# feature that's untested in this project's actual build (net8.0-windows).
@@ -30,13 +30,13 @@ internal static class Program
     // Set by the CI smoke test so a failure path logs instead of blocking forever on a
     // MessageBox nobody's there to dismiss.
     private static readonly bool TestMode =
-        Environment.GetEnvironmentVariable("MIL_HOME_LAUNCHER_TEST_MODE") == "1";
+        Environment.GetEnvironmentVariable("RMS_HOME_LAUNCHER_TEST_MODE") == "1";
 
     // A WinExe app has no console -- Console.Error/Out writes silently go nowhere, so
     // this is the only way to see what actually happened. Written to %TEMP%, not under
     // AppDir, so logging keeps working even if AppDir's own resolution is what's wrong.
     private static readonly string LogPath =
-        Path.Combine(Path.GetTempPath(), "mil-home-launcher.log");
+        Path.Combine(Path.GetTempPath(), "rms-home-launcher.log");
 
     private static void Log(string message)
     {
@@ -59,10 +59,10 @@ internal static class Program
     {
         Log("ERROR: " + message);
         if (TestMode) return;
-        MessageBox(IntPtr.Zero, message, "MIL-HOME", MB_ICONERROR);
+        MessageBox(IntPtr.Zero, message, "RMS-HOME", MB_ICONERROR);
     }
 
-    // {app}\launcher\MIL-HOME-Launcher.exe -> {app}\launcher -> {app}. Environment.
+    // {app}\launcher\RMS-HOME-Launcher.exe -> {app}\launcher -> {app}. Environment.
     // ProcessPath (not AppContext.BaseDirectory) is used because it's documented to
     // resolve to the actual launched exe's path even under PublishSingleFile, which
     // extracts native dependencies to a temp dir at runtime.
@@ -71,11 +71,11 @@ internal static class Program
 
     // Must match server/lib/heartbeat.ts's getHeartbeatPath() exactly -- both sides
     // agree on this fixed name in the OS temp dir specifically because {app} (C:\Program
-    // Files\MIL-HOME) isn't writable by the normal, non-elevated user account this
+    // Files\rms-home) isn't writable by the normal, non-elevated user account this
     // launcher and the app server both actually run as (only the installer itself runs
     // elevated). Same reasoning as this launcher's own LogPath, above.
     private static string HeartbeatPath =>
-        Path.Combine(Path.GetTempPath(), "mil-home-heartbeat.txt");
+        Path.Combine(Path.GetTempPath(), "rms-home-heartbeat.txt");
 
     private static async Task<int> Main()
     {
@@ -110,8 +110,8 @@ internal static class Program
 
         if (!EnsureServiceRunning())
         {
-            ShowError($"MIL-HOME could not start its database service ({ServiceName}).\n" +
-                      "Try restarting your computer. If this keeps happening, reinstall MIL-HOME.");
+            ShowError($"RMS-HOME could not start its database service ({ServiceName}).\n" +
+                      "Try restarting your computer. If this keeps happening, reinstall RMS-HOME.");
             return 1;
         }
 
@@ -126,7 +126,7 @@ internal static class Program
         {
             Log("App did not become ready within the timeout.");
             KillTree(node);
-            ShowError("MIL-HOME did not start within 15 seconds.\n" +
+            ShowError("RMS-HOME did not start within 15 seconds.\n" +
                       "Please try again. If this keeps happening, restart your computer.");
             return 1;
         }

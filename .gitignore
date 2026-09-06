@@ -6,6 +6,6 @@ tsconfig.tsbuildinfo
 installer/redist
 installer/staging
 installer/*.exe
-launcher/MilHomeLauncher/bin
-launcher/MilHomeLauncher/obj
+launcher/RmsHomeLauncher/bin
+launcher/RmsHomeLauncher/obj
 .DS_Store

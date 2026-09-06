@@ -374,7 +374,7 @@ export function HomePage({
           <div className="absolute inset-0 bg-[rgba(11,31,28,0.92)]" />
 
           <div className="relative flex flex-wrap items-center justify-between gap-4 px-4 py-4 text-sm text-slate-300 sm:px-6">
-            <span>Developed by STNHQ, Dimapur</span>
+            <span>Developed by Stn HQ, Dimapur</span>
 
             <div className="flex flex-wrap items-center gap-6">
               <span>
@@ -386,7 +386,7 @@ export function HomePage({
               </span>
             </div>
 
-            <span>Copyright &copy; ADM COMDT STNHQ Dimapur</span>
+            <span>Copyright &copy; Adm Comdt Stn HQ, Dimapur</span>
           </div>
         </div>
       </main>

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import crypto from "node:crypto";
 import { prisma } from "@/server/db/client";
 
-const COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "mil_home_session";
+const COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "rms_home_session";
 const TTL_HOURS = Number(process.env.SESSION_TTL_HOURS ?? 3);
 
 export type SessionUser = {

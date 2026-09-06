@@ -70,7 +70,7 @@ jobs:
 
       - name: Publish launcher
         run: >
-          dotnet publish launcher/MilHomeLauncher/MilHomeLauncher.csproj -c Release -r win-x64
+          dotnet publish launcher/RmsHomeLauncher/RmsHomeLauncher.csproj -c Release -r win-x64
           --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
           -o installer/staging/app/launcher
 
@@ -122,9 +122,9 @@ jobs:
       - name: Smoke test -- silent install
         shell: pwsh
         run: |
-          $setup = Get-ChildItem -Path installer -Filter "mil-home-setup.exe" -Recurse | Select-Object -First 1
+          $setup = Get-ChildItem -Path installer -Filter "rms-home-setup.exe" -Recurse | Select-Object -First 1
           if (-not $setup) { throw "Compiled installer not found" }
-          $installLog = "C:\mil-home-install.log"
+          $installLog = "C:\rms-home-install.log"
           Start-Process -FilePath $setup.FullName -ArgumentList "/verysilent","/suppressmsgboxes","/norestart","/LOG=$installLog" -Wait
 
           # Dump Inno's own step-by-step log unconditionally, before any assertions --
@@ -138,14 +138,14 @@ jobs:
           }
           Write-Host "----- end install log -----"
 
-          $service = Get-Service -Name "mil-home-postgresql" -ErrorAction SilentlyContinue
-          if (-not $service) { throw "mil-home-postgresql service was not created" }
-          if ($service.Status -ne "Running") { throw "mil-home-postgresql service is not running (status: $($service.Status))" }
+          $service = Get-Service -Name "rms-home-postgresql" -ErrorAction SilentlyContinue
+          if (-not $service) { throw "rms-home-postgresql service was not created" }
+          if ($service.Status -ne "Running") { throw "rms-home-postgresql service is not running (status: $($service.Status))" }
 
-          $envPath = "C:\Program Files\MIL-HOME\.env"
+          $envPath = "C:\Program Files\rms-home\.env"
           if (-not (Test-Path $envPath)) { throw ".env was not written to the install directory" }
           $envContent = Get-Content $envPath -Raw
-          if ($envContent -notmatch "DATABASE_URL=.*127\.0\.0\.1:(\d+)/mil_home") { throw ".env DATABASE_URL is not in the expected shape" }
+          if ($envContent -notmatch "DATABASE_URL=.*127\.0\.0\.1:(\d+)/rms_home") { throw ".env DATABASE_URL is not in the expected shape" }
           $dbPort = [int]$Matches[1]
           Write-Host "Dedicated Postgres instance is on port $dbPort"
 
@@ -163,16 +163,16 @@ jobs:
       - name: Smoke test -- launcher starts app and enforces heartbeat teardown
         shell: pwsh
         run: |
-          $launcherExe = "C:\Program Files\MIL-HOME\launcher\MIL-HOME-Launcher.exe"
+          $launcherExe = "C:\Program Files\rms-home\launcher\RMS-HOME-Launcher.exe"
           if (-not (Test-Path $launcherExe)) { throw "Launcher exe not found at expected path" }
 
           # Force the service down first so this run actually exercises the launcher's
           # "service isn't running, start it" branch, not just the trivial already-up case.
-          Stop-Service -Name "mil-home-postgresql" -Force
+          Stop-Service -Name "rms-home-postgresql" -Force
 
           # No dialogs to hang on if an error path is hit on this unattended runner.
-          $env:MIL_HOME_LAUNCHER_TEST_MODE = "1"
-          $launcherLog = "$env:TEMP\mil-home-launcher.log"
+          $env:RMS_HOME_LAUNCHER_TEST_MODE = "1"
+          $launcherLog = "$env:TEMP\rms-home-launcher.log"
           if (Test-Path $launcherLog) { Remove-Item $launcherLog }
 
           try {
@@ -192,7 +192,7 @@ jobs:
             }
             if (-not $ready) { throw "Launcher did not bring the app up within 20s" }
 
-            $service = Get-Service -Name "mil-home-postgresql"
+            $service = Get-Service -Name "rms-home-postgresql"
             if ($service.Status -ne "Running") { throw "Launcher did not start the Postgres service" }
 
             $nodeBefore = Get-Process -Name node -ErrorAction SilentlyContinue
@@ -226,7 +226,7 @@ jobs:
       - name: Smoke test -- silent uninstall cleans up
         shell: pwsh
         run: |
-          $uninstaller = Get-ChildItem -Path "C:\Program Files\MIL-HOME" -Filter "unins*.exe" | Select-Object -First 1
+          $uninstaller = Get-ChildItem -Path "C:\Program Files\rms-home" -Filter "unins*.exe" | Select-Object -First 1
           if (-not $uninstaller) { throw "Uninstaller not found" }
           Start-Process -FilePath $uninstaller.FullName -ArgumentList "/verysilent","/suppressmsgboxes","/norestart" -Wait
 
@@ -234,23 +234,23 @@ jobs:
           # it self-deletes via a short-lived helper process after this one exits --
           # give that a moment before checking the install directory is actually gone.
           Start-Sleep -Seconds 5
-          $service = Get-Service -Name "mil-home-postgresql" -ErrorAction SilentlyContinue
-          if ($service) { throw "mil-home-postgresql service still exists after uninstall" }
-          if (Test-Path "C:\ProgramData\MIL-HOME") { throw "Dedicated data directory was not removed by the uninstaller" }
-          if (Test-Path "C:\Program Files\MIL-HOME") { throw ".env/.runtime or other untracked files left the install directory non-empty after uninstall" }
+          $service = Get-Service -Name "rms-home-postgresql" -ErrorAction SilentlyContinue
+          if ($service) { throw "rms-home-postgresql service still exists after uninstall" }
+          if (Test-Path "C:\ProgramData\RMS-HOME") { throw "Dedicated data directory was not removed by the uninstaller" }
+          if (Test-Path "C:\Program Files\rms-home") { throw ".env/.runtime or other untracked files left the install directory non-empty after uninstall" }
 
           # EDB's Postgres installer registers its own separate Programs and Features
           # entry, independent of the service and files already checked above -- confirm
           # setup.iss's RemoveOrphanedPostgresUninstallEntry actually cleaned it up,
           # rather than leaving a dangling entry pointing at a now-deleted uninstaller.
           $orphanedEntry = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" -ErrorAction SilentlyContinue |
-            Where-Object { $_.InstallLocation -like "C:\Program Files\MIL-HOME\pgsql*" }
+            Where-Object { $_.InstallLocation -like "C:\Program Files\rms-home\pgsql*" }
           if ($orphanedEntry) { throw "Orphaned PostgreSQL Programs-and-Features entry still exists after uninstall: $($orphanedEntry.DisplayName)" }
 
           Write-Host "Uninstall removed the service, its dedicated data directory, the install directory, and the Postgres Add/Remove Programs entry."
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mil-home-setup
-          path: installer/Output/mil-home-setup.exe
+          name: rms-home-setup
+          path: installer/Output/rms-home-setup.exe
           if-no-files-found: error

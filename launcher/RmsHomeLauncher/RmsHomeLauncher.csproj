@@ -2,8 +2,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <RootNamespace>MilHomeLauncher</RootNamespace>
-    <AssemblyName>MIL-HOME-Launcher</AssemblyName>
+    <RootNamespace>RmsHomeLauncher</RootNamespace>
+    <AssemblyName>RMS-HOME-Launcher</AssemblyName>
     <Nullable>enable</Nullable>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>

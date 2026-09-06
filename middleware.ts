@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "mil_home_session";
+const COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "rms_home_session";
 // /account is reachable whether or not there's a session — it renders the login
 // form itself when logged out, so the middleware must not redirect it to /login.
 const PUBLIC_PATHS = ["/login", "/signup", "/account"];

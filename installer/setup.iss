@@ -1,4 +1,4 @@
-; MIL-HOME Windows installer.
+; RMS-HOME Windows installer.
 ;
 ; Two hard rules drive every decision below:
 ;   1. Never disturb what's already on the machine (Node: only install if missing/
@@ -12,23 +12,24 @@
 ; .github/workflows/build-installer.yml CI job before ISCC compiles this script; neither
 ; is committed to the repo.
 
-#define AppName "MIL-HOME"
+#define AppName "RMS-HOME"
+#define AppDirName "rms-home"
 #define AppVersion "1.0.0"
-#define PgServiceName "mil-home-postgresql"
+#define PgServiceName "rms-home-postgresql"
 #define PgSuperUser "postgres"
-#define PgSuperPassword "mil_home_dev"
+#define PgSuperPassword "rms_home_dev"
 #define PgPreferredPort "5433"
 #define MinNodeVersion "18.18.0"
 
 [Setup]
 AppName={#AppName}
 AppVersion={#AppVersion}
-DefaultDirName={autopf}\{#AppName}
+DefaultDirName={autopf}\{#AppDirName}
 DefaultGroupName={#AppName}
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-OutputBaseFilename=mil-home-setup
+OutputBaseFilename=rms-home-setup
 Compression=lzma2
 SolidCompression=yes
 DisableProgramGroupPage=yes
@@ -65,8 +66,8 @@ Source: "templates\env.template"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "staging\app\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\launcher\MIL-HOME-Launcher.exe"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\launcher\MIL-HOME-Launcher.exe"
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\launcher\RMS-HOME-Launcher.exe"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\launcher\RMS-HOME-Launcher.exe"
 
 [Run]
 Filename: "msiexec.exe"; \
@@ -74,7 +75,7 @@ Filename: "msiexec.exe"; \
     StatusMsg: "Installing Node.js..."; Check: NeedsNode; Flags: waituntilterminated
 
 Filename: "{tmp}\postgresql-installer.exe"; \
-    Parameters: "--mode unattended --unattendedmodeui minimal --prefix ""{app}\pgsql"" --datadir ""C:\ProgramData\MIL-HOME\pgdata"" --servicename {#PgServiceName} --serverport {code:GetChosenPort} --superpassword {#PgSuperPassword} --disable-components pgAdmin,stackbuilder"; \
+    Parameters: "--mode unattended --unattendedmodeui minimal --prefix ""{app}\pgsql"" --datadir ""C:\ProgramData\RMS-HOME\pgdata"" --servicename {#PgServiceName} --serverport {code:GetChosenPort} --superpassword {#PgSuperPassword} --disable-components pgAdmin,stackbuilder"; \
     StatusMsg: "Installing dedicated PostgreSQL instance..."; Check: NeedsPostgresProvisioning; Flags: waituntilterminated
 
 ; Everything from here on (Postgres readiness through the final migration) is run from
@@ -98,7 +99,7 @@ Filename: "{sys}\sc.exe"; Parameters: "delete {#PgServiceName}"; Flags: runhidde
 ; tracked, and would otherwise survive uninstall sitting in an oddly-non-empty Program
 ; Files folder ({app}\pgsql is nested under here too, so covered either way).
 Type: filesandordirs; Name: "{app}"
-Type: filesandordirs; Name: "C:\ProgramData\MIL-HOME"
+Type: filesandordirs; Name: "C:\ProgramData\RMS-HOME"
 
 [Code]
 var
@@ -242,14 +243,14 @@ var
 begin
   if not PostgresChecked then
   begin
-    // A pre-existing mil-home-postgresql service means this is a re-run (update, or a
+    // A pre-existing rms-home-postgresql service means this is a re-run (update, or a
     // retry after a failed first attempt) -- skip straight to the migration step
     // instead of trying to provision the instance a second time.
     Exec(ExpandConstant('{cmd}'), '/C sc.exe query {#PgServiceName} >nul 2>&1', '', SW_HIDE,
       ewWaitUntilTerminated, ResultCode);
     PostgresAlreadyProvisioned := (ResultCode = 0);
     PostgresChecked := True;
-    Log('mil-home-postgresql service exists: ' + BoolStr(PostgresAlreadyProvisioned));
+    Log('rms-home-postgresql service exists: ' + BoolStr(PostgresAlreadyProvisioned));
   end;
   Result := not PostgresAlreadyProvisioned;
 end;
@@ -297,7 +298,7 @@ end;
 
 // The EDB Postgres installer registers its own separate "PostgreSQL 16" entry in
 // Windows' Programs and Features / Add-Remove-Programs list -- entirely independent of
-// the mil-home-postgresql Windows service ([UninstallRun] above) and the files under
+// the rms-home-postgresql Windows service ([UninstallRun] above) and the files under
 // {app}\pgsql ([UninstallDelete] above). Neither of those touches this registration, so
 // left alone it survives uninstall as an orphaned entry pointing at an uninstaller
 // whose files we just deleted. Only ever removes an entry whose own InstallLocation is
@@ -375,7 +376,7 @@ begin
 
   if not Exec(ExpandConstant('{cmd}'), CmdLine, WorkingDir, SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
-    RaiseException('MIL-HOME setup failed at "' + StepDescription + '": cmd.exe itself could not be started (' +
+    RaiseException('RMS-HOME setup failed at "' + StepDescription + '": cmd.exe itself could not be started (' +
       SysErrorMessage(ResultCode) + ').');
   end;
 
@@ -393,7 +394,7 @@ begin
   Log('RunCriticalStep: "' + StepDescription + '" exit code=' + IntToStr(ResultCode) + #13#10 + 'Output: ' + Output);
 
   if ResultCode <> 0 then
-    RaiseException('MIL-HOME setup failed at "' + StepDescription + '" (exit code ' + IntToStr(ResultCode) + ').' + #13#10#13#10 +
+    RaiseException('RMS-HOME setup failed at "' + StepDescription + '" (exit code ' + IntToStr(ResultCode) + ').' + #13#10#13#10 +
       'Output:' + #13#10 + Output + #13#10#13#10 +
       'A diagnostic log was saved under %TEMP%\Setup Log*.txt -- please include it if you report this.');
 end;
@@ -417,7 +418,7 @@ begin
 
     RunCriticalStep(PowerShellExe,
       '-NoProfile -ExecutionPolicy Bypass -File "' + TmpDir + '\Secure-PostgresNetwork.ps1" -DataDir ' +
-        '"C:\ProgramData\MIL-HOME\pgdata" -PsqlPath "' + PgPsqlExe + '" -ServiceName {#PgServiceName} -Port ' +
+        '"C:\ProgramData\RMS-HOME\pgdata" -PsqlPath "' + PgPsqlExe + '" -ServiceName {#PgServiceName} -Port ' +
         Port + ' -SuperUser {#PgSuperUser} -SuperPassword {#PgSuperPassword}',
       TmpDir, 'Restricting PostgreSQL to local connections only...');
 

@@ -48,7 +48,7 @@ describe("setupCredentialsSchema", () => {
   it("accepts a valid payload", () => {
     const result = setupCredentialsSchema.safeParse({
       username: "admin",
-      email: "admin@milhome.local",
+      email: "admin@rmshome.local",
       newPassword: "Abcdefgh1!",
       confirmNewPassword: "Abcdefgh1!",
     });
@@ -58,7 +58,7 @@ describe("setupCredentialsSchema", () => {
   it("rejects when confirmNewPassword does not match", () => {
     const result = setupCredentialsSchema.safeParse({
       username: "admin",
-      email: "admin@milhome.local",
+      email: "admin@rmshome.local",
       newPassword: "Abcdefgh1!",
       confirmNewPassword: "Different1!",
     });
@@ -68,7 +68,7 @@ describe("setupCredentialsSchema", () => {
   it("has no currentPassword field, unlike changeCredentialsSchema", () => {
     const result = setupCredentialsSchema.safeParse({
       username: "admin",
-      email: "admin@milhome.local",
+      email: "admin@rmshome.local",
       newPassword: "Abcdefgh1!",
       confirmNewPassword: "Abcdefgh1!",
       currentPassword: "should be ignored",
@@ -84,7 +84,7 @@ describe("changeCredentialsSchema", () => {
   it("requires currentPassword", () => {
     const result = changeCredentialsSchema.safeParse({
       username: "admin",
-      email: "admin@milhome.local",
+      email: "admin@rmshome.local",
       newPassword: "Abcdefgh1!",
       confirmNewPassword: "Abcdefgh1!",
     });
@@ -95,7 +95,7 @@ describe("changeCredentialsSchema", () => {
     const result = changeCredentialsSchema.safeParse({
       currentPassword: "OldPassword1!",
       username: "admin",
-      email: "admin@milhome.local",
+      email: "admin@rmshome.local",
       newPassword: "Abcdefgh1!",
       confirmNewPassword: "Abcdefgh1!",
     });

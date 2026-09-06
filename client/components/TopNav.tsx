@@ -85,7 +85,7 @@ export function TopNav() {
     <header className="sticky top-0 z-20 grid grid-cols-[auto_1fr_auto] items-center gap-4 bg-base-dark px-4 py-2 text-white sm:px-6">
       <Link href="/account" className="flex shrink-0 items-center gap-2 justify-self-start">
         <Shield size={20} className="text-accent" />
-        <span className="font-bold tracking-wide">MIL-HOME</span>
+        <span className="font-bold tracking-wide">RMS-HOME</span>
       </Link>
 
       <nav className="flex items-center justify-center gap-1 overflow-x-auto">

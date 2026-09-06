@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Creates the mil_home role and mil_home database inside this app's dedicated Postgres
+  Creates the rms_home role and rms_home database inside this app's dedicated Postgres
   instance only. Idempotent -- safe to call again if a prior install attempt got this
   far but failed on a later step.
 #>
@@ -9,9 +9,9 @@ param(
     [int]$Port = 5433,
     [string]$SuperUser = "postgres",
     [Parameter(Mandatory = $true)][string]$SuperPassword,
-    [string]$AppUser = "mil_home",
-    [string]$AppPassword = "mil_home_dev",
-    [string]$AppDatabase = "mil_home"
+    [string]$AppUser = "rms_home",
+    [string]$AppPassword = "rms_home_dev",
+    [string]$AppDatabase = "rms_home"
 )
 
 $ErrorActionPreference = "Stop"

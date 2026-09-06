@@ -30,12 +30,12 @@ async function main() {
   await prisma.user.deleteMany();
 
   console.log("Creating users...");
-  const passwordHash = await bcrypt.hash("MilHome@2026", BCRYPT_COST);
+  const passwordHash = await bcrypt.hash("RmsHome@2026", BCRYPT_COST);
   const admin = await prisma.user.create({
-    data: { email: "demo.admin@milhome.local", username: "admin", passwordHash },
+    data: { email: "demo.admin@rmshome.local", username: "admin", passwordHash },
   });
   await prisma.user.create({
-    data: { email: "housing.officer@milhome.local", username: "housing.officer", passwordHash },
+    data: { email: "housing.officer@rmshome.local", username: "housing.officer", passwordHash },
   });
 
   async function log(action: string, entity: string, entityId?: number, details?: string, when?: Date) {
@@ -362,8 +362,8 @@ async function main() {
   }
 
   console.log("Seed complete.");
-  console.log("Demo login: demo.admin@milhome.local / MilHome@2026 (or housing.officer@milhome.local / MilHome@2026)");
-  console.log("Real admin login (bootstrap, created automatically on server startup): admin@milhome.local — see server/lib/admin-bootstrap.ts");
+  console.log("Demo login: demo.admin@rmshome.local / RmsHome@2026 (or housing.officer@rmshome.local / RmsHome@2026)");
+  console.log("Real admin login (bootstrap, created automatically on server startup): admin@rmshome.local — see server/lib/admin-bootstrap.ts");
 }
 
 main()

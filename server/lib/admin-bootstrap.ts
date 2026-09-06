@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { logAudit } from "@/server/lib/audit";
 
-const BOOTSTRAP_ADMIN_EMAIL = "admin@milhome.local";
+const BOOTSTRAP_ADMIN_EMAIL = "admin@rmshome.local";
 const BOOTSTRAP_ADMIN_USERNAME = "admin";
 // Pre-generated bcrypt hash (cost 12) of the one-time bootstrap password. Generated
 // once via `node -e "require('bcryptjs').hash('Bharat#Veer_91', 12).then(console.log)"`
