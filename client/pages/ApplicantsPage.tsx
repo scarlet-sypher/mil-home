@@ -101,11 +101,6 @@ export function ApplicantsPage({ applicants }: { applicants: Applicant[] }) {
         <DataTable
           columns={[
             { header: "S/No.", render: (_a: Applicant, i: number) => i + 1, exportValue: (_a, i) => i + 1 },
-            { header: "Army No.", render: (a: Applicant) => a.serviceNo, sortValue: (a) => a.serviceNo },
-            { header: "Rank", render: (a: Applicant) => a.rank, sortValue: (a) => a.rank },
-            { header: "Name", render: (a: Applicant) => a.name, sortValue: (a) => a.name },
-            { header: "Unit", render: (a: Applicant) => a.unit, sortValue: (a) => a.unit },
-            { header: "Seniority", render: (a: Applicant) => formatDate(a.seniorityDate), sortValue: (a) => a.seniorityDate },
             {
               header: "Qtr Loc",
               render: (a: Applicant) => (a.status === "ALLOTTED" ? a.allotments[0]?.quarter.colony ?? "—" : "—"),
@@ -116,6 +111,11 @@ export function ApplicantsPage({ applicants }: { applicants: Applicant[] }) {
               render: (a: Applicant) => (a.status === "ALLOTTED" ? a.allotments[0]?.quarter.quarterNo ?? "—" : "—"),
               sortValue: (a) => (a.status === "ALLOTTED" ? a.allotments[0]?.quarter.quarterNo : undefined),
             },
+            { header: "Army No.", render: (a: Applicant) => a.serviceNo, sortValue: (a) => a.serviceNo },
+            { header: "Rank", render: (a: Applicant) => a.rank, sortValue: (a) => a.rank },
+            { header: "Name", render: (a: Applicant) => a.name, sortValue: (a) => a.name },
+            { header: "Unit", render: (a: Applicant) => a.unit, sortValue: (a) => a.unit },
+            { header: "Seniority", render: (a: Applicant) => formatDate(a.seniorityDate), sortValue: (a) => a.seniorityDate },
             { header: "Status", render: (a: Applicant) => <StatusBadge status={a.status} />, sortValue: (a) => a.status },
             { header: "Remarks", render: (a: Applicant) => <RemarkCell text={a.remarks} label="Remarks" />, sortValue: (a) => a.remarks },
           ]}

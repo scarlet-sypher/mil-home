@@ -114,12 +114,12 @@ export function VacationsPage({
         <DataTable
           columns={[
             { header: "S/No.", render: (_v: Vacation, i: number) => i + 1, exportValue: (_v, i) => i + 1 },
+            { header: "Qtr Loc", render: (v: Vacation) => v.quarter.colony, sortValue: (v) => v.quarter.colony },
+            { header: "Qtr No.", render: (v: Vacation) => v.quarter.quarterNo, sortValue: (v) => v.quarter.quarterNo },
             { header: "Army No.", render: (v: Vacation) => v.applicant.serviceNo, sortValue: (v) => v.applicant.serviceNo },
             { header: "Rank", render: (v: Vacation) => v.applicant.rank, sortValue: (v) => v.applicant.rank },
             { header: "Name", render: (v: Vacation) => v.applicant.name, sortValue: (v) => v.applicant.name },
             { header: "Unit", render: (v: Vacation) => v.applicant.unit, sortValue: (v) => v.applicant.unit },
-            { header: "Qtr Loc", render: (v: Vacation) => v.quarter.colony, sortValue: (v) => v.quarter.colony },
-            { header: "Qtr No.", render: (v: Vacation) => v.quarter.quarterNo, sortValue: (v) => v.quarter.quarterNo },
             { header: "Inspection", render: (v: Vacation) => <StatusBadge status={v.inspectionStatus} />, sortValue: (v) => v.inspectionStatus },
             {
               header: "Defects",

@@ -9,7 +9,6 @@ import {
   Wrench,
   Calendar,
   Clock,
-  ShieldCheck,
   FileText,
   TrendingUp,
   UserPlus,
@@ -37,16 +36,16 @@ type StatCardDef = {
 function StatCard({ label, value, trend, icon: Icon, badgeColor, sparklineColor }: StatCardDef) {
   const isUp = trend.percent >= 0;
   return (
-    <div className="rounded-card border border-[rgba(255,255,255,0.12)] bg-[rgba(11,61,52,0.6)] px-4 py-5 shadow-lg backdrop-blur-md [-webkit-backdrop-filter:blur(12px)] first:ml-3 last:mr-3 sm:first:ml-4 sm:last:mr-4 lg:first:ml-6 lg:last:mr-6">
+    <div className="rounded-card border border-[rgba(255,255,255,0.12)] bg-[rgba(11,61,52,0.6)] px-4 py-6 shadow-lg backdrop-blur-md [-webkit-backdrop-filter:blur(12px)] first:ml-3 last:mr-3 sm:first:ml-4 sm:last:mr-4 lg:first:ml-6 lg:last:mr-6">
       <div className="flex items-center gap-2">
         <div className={`inline-flex shrink-0 rounded-md p-2 ${badgeColor}`}>
-          <Icon size={16} className="text-white" />
+          <Icon size={18} className="text-white" />
         </div>
-        <p className="text-base font-semibold text-slate-300">{label}</p>
+        <p className="text-lg font-semibold text-slate-300">{label}</p>
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <p className="text-3xl font-bold text-white">{value}</p>
-        <span className={`text-sm font-medium ${isUp ? "text-emerald-400" : "text-red-400"}`}>
+        <p className="text-[32px] font-bold text-white">{value}</p>
+        <span className={`text-base font-medium ${isUp ? "text-emerald-400" : "text-red-300"}`}>
           {isUp ? "↑" : "↓"}
           {Math.abs(trend.percent)}% vs last month
         </span>
@@ -135,18 +134,18 @@ function OverviewCard({
     <div className="rounded-card border border-slate-200 bg-white p-4">
       <div className="mb-3 flex items-center gap-2">
         <div className="rounded-md bg-slate-100 p-1.5 text-slate-600">
-          <Icon size={16} />
+          <Icon size={18} />
         </div>
-        <p className="text-sm font-semibold text-slate-700">{title}</p>
+        <p className="text-base font-semibold text-slate-700">{title}</p>
       </div>
       <div className="flex justify-center">
         <DonutChart total={total} segments={segments} size={100} strokeWidth={13} />
       </div>
-      <ul className="mt-3 space-y-1.5 text-sm">
+      <ul className="mt-3 space-y-1.5 text-base">
         {segments.map((segment) => (
           <li key={segment.label} className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-1.5 text-slate-600">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} />
+              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} />
               {segment.label}
             </span>
             <span className="font-semibold text-slate-900">{segment.value}</span>
@@ -201,7 +200,15 @@ function greeting(hour: number) {
   return "Good Evening";
 }
 
-export function HomePage({ username, stats }: { username: string; stats: DashboardStats }) {
+export function HomePage({
+  username,
+  role,
+  stats,
+}: {
+  username: string;
+  role: "ADMIN" | "USER";
+  stats: DashboardStats;
+}) {
   const now = new Date();
   const dateLabel = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const timeLabel = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true });
@@ -222,21 +229,24 @@ export function HomePage({ username, stats }: { username: string; stats: Dashboa
                 pt bumped down slightly (was pt-8/pt-10) for better balance against the image. */}
             <div className="absolute inset-0 flex flex-col justify-start gap-3 px-6 pt-12 sm:px-10 sm:pt-14">
               <div>
-                <p className="text-xl font-medium text-white [text-shadow:_0_2px_8px_rgb(0_0_0_/_45%)] sm:text-2xl">
+                <p className="text-[22px] font-medium text-white [text-shadow:_0_2px_8px_rgb(0_0_0_/_45%)] sm:text-[26px]">
                   {greeting(now.getHours())},
                 </p>
-                <p className="text-[3rem] font-bold leading-tight text-accent [text-shadow:_0_2px_10px_rgb(0_0_0_/_45%)]">
-                  {capitalizeWords(username)}
+                <p className="text-[50px] font-bold leading-tight text-accent [text-shadow:_0_2px_10px_rgb(0_0_0_/_45%)]">
+                  {capitalizeWords(username)}{" "}
+                  <span className="text-[26px] font-semibold text-white/80">
+                    ({role === "ADMIN" ? "Admin" : "User"})
+                  </span>
                 </p>
               </div>
-              <p className="max-w-md text-base text-slate-100 [text-shadow:_0_1px_6px_rgb(0_0_0_/_45%)]">
+              <p className="max-w-md text-lg text-slate-100 [text-shadow:_0_1px_6px_rgb(0_0_0_/_45%)]">
                 Here&apos;s what&apos;s happening across the system today.
               </p>
-              <span className="flex w-fit items-center gap-2 rounded-full bg-black/30 px-4 py-2 text-base text-white backdrop-blur-sm">
-                <Calendar size={16} />
+              <span className="flex w-fit items-center gap-2 rounded-full bg-black/30 px-4 py-2 text-lg text-white backdrop-blur-sm">
+                <Calendar size={18} />
                 {dateLabel}
                 <span className="mx-1 h-1 w-1 rounded-full bg-white/50" />
-                <Clock size={16} />
+                <Clock size={18} />
                 {timeLabel}
               </span>
             </div>
@@ -266,8 +276,8 @@ export function HomePage({ username, stats }: { username: string; stats: Dashboa
         <div className="mx-3 mb-8 grid gap-4 sm:mx-4 lg:mx-6 lg:grid-cols-[7fr_2fr]">
         <div className="rounded-card border border-slate-200 bg-white p-4">
           <div className="mb-3 flex items-center gap-2">
-            <TrendingUp size={18} className="text-accent" />
-            <h2 className="text-base font-semibold text-slate-900">Overview</h2>
+            <TrendingUp size={20} className="text-accent" />
+            <h2 className="text-lg font-semibold text-slate-900">Overview</h2>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <OverviewCard
@@ -337,68 +347,46 @@ export function HomePage({ username, stats }: { username: string; stats: Dashboa
         </div>
 
         <div className="rounded-card border border-slate-200 bg-white p-4">
-          <h2 className="mb-3 text-base font-semibold text-slate-900">Quick Actions</h2>
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">Quick Actions</h2>
           <div className="flex flex-col gap-2">
             {QUICK_ACTIONS.map((action) => (
               <Link
                 key={action.label}
                 href={action.href}
-                className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-transform duration-150 hover:-translate-y-0.5 hover:shadow-sm ${action.tint}`}
+                className={`flex items-center justify-between rounded-lg px-3 py-3 text-base font-medium transition-transform duration-150 hover:-translate-y-0.5 hover:shadow-sm ${action.tint}`}
               >
                 <span className="flex items-center gap-2.5">
                   <span className={`inline-flex shrink-0 rounded-md p-1.5 text-white ${action.badgeColor}`}>
-                    <action.icon size={14} />
+                    <action.icon size={16} />
                   </span>
                   {action.label}
                 </span>
-                <ChevronRight size={16} />
+                <ChevronRight size={18} />
               </Link>
             ))}
           </div>
         </div>
         </div>
 
-        {/* Bottom status bar */}
+        {/* Footer */}
         <div className="relative overflow-hidden">
           <Image src="/images/forest.png" alt="" fill sizes="100vw" className="object-cover" />
-          <div className="absolute inset-0 bg-[rgba(6,20,17,0.85)]" />
-          <div className="relative flex flex-wrap items-center justify-center gap-14 px-6 py-2.5 text-sm">
-            <div className="flex items-center gap-2.5">
-              <ShieldCheck size={26} className="text-accent" />
-              <div>
-                <p className="font-medium text-white">System Status</p>
-                <p className="text-xs text-slate-300">All systems operational</p>
-              </div>
+          <div className="absolute inset-0 bg-[rgba(11,31,28,0.92)]" />
+
+          <div className="relative flex flex-wrap items-center justify-between gap-4 px-4 py-4 text-sm text-slate-300 sm:px-6">
+            <span>Developed by STNHQ, Dimapur</span>
+
+            <div className="flex flex-wrap items-center gap-6">
+              <span>
+                Audit Logs Today &middot; <span className="font-semibold text-white">{stats.auditLogsToday}</span>{" "}
+                &middot; <Link href="/audit" className="text-accent hover:underline">View logs</Link>
+              </span>
+              <span>
+                Last Updated &middot; {stats.lastUpdated ? formatDateTime(stats.lastUpdated) : "No activity yet"}
+              </span>
             </div>
-            <div className="flex items-center gap-2.5">
-              <Users size={26} className="text-accent" />
-              <div>
-                <p className="font-medium text-white">
-                  Active Users <span className="ml-1 font-semibold">{stats.totalUsers}</span>
-                </p>
-                <p className="text-xs text-slate-300">Registered users</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <FileText size={26} className="text-accent" />
-              <div>
-                <p className="font-medium text-white">
-                  Audit Logs Today <span className="ml-1 font-semibold">{stats.auditLogsToday}</span>
-                </p>
-                <Link href="/audit" className="text-xs text-accent hover:underline">
-                  View logs
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Clock size={26} className="text-accent" />
-              <div>
-                <p className="font-medium text-white">Last Updated</p>
-                <p className="text-xs text-slate-300">
-                  {stats.lastUpdated ? formatDateTime(stats.lastUpdated) : "No activity yet"}
-                </p>
-              </div>
-            </div>
+
+            <span>Copyright &copy; ADM COMDT STNHQ Dimapur</span>
           </div>
         </div>
       </main>

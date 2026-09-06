@@ -23,6 +23,7 @@ type Quarter = {
   name: string | null;
   unit: string | null;
   underMaintenance: boolean;
+  createdAt: Date;
 };
 
 type MaintenanceRecord = {
@@ -97,7 +98,16 @@ function ConditionSelect({ value, onChange }: { value: string; onChange: (value:
   );
 }
 
-export function QuartersPage({ quarters, maintenanceRecords }: { quarters: Quarter[]; maintenanceRecords: MaintenanceRecord[] }) {
+export function QuartersPage({
+  quarters,
+  maintenanceRecords,
+  role,
+}: {
+  quarters: Quarter[];
+  maintenanceRecords: MaintenanceRecord[];
+  role: "ADMIN" | "USER";
+}) {
+  const isAdmin = role === "ADMIN";
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>(searchParams.get("tab") === "MAINTENANCE" ? "MAINTENANCE" : "ALL");
@@ -363,6 +373,9 @@ export function QuartersPage({ quarters, maintenanceRecords }: { quarters: Quart
       return <span className="text-sm text-slate-400">—</span>;
     }
 
+    // Editing and deleting a vacant quarter record is an admin-only action.
+    const canEditOrDelete = q.status !== "VACANT" || isAdmin;
+
     if (editingId === q.id) {
       return (
         <div className="flex gap-1.5">
@@ -378,12 +391,16 @@ export function QuartersPage({ quarters, maintenanceRecords }: { quarters: Quart
 
     return (
       <div className="flex flex-wrap gap-1.5">
-        <Button variant="info" onClick={onEdit ?? (() => startEdit(q))}>
-          <Pencil size={14} />
-        </Button>
-        <Button variant="danger" onClick={() => requestDelete(q.id)}>
-          <Trash2 size={14} />
-        </Button>
+        {canEditOrDelete && (
+          <>
+            <Button variant="info" onClick={onEdit ?? (() => startEdit(q))}>
+              <Pencil size={14} />
+            </Button>
+            <Button variant="danger" onClick={() => requestDelete(q.id)}>
+              <Trash2 size={14} />
+            </Button>
+          </>
+        )}
         <Button variant="warning" onClick={() => requestStartMaintenance(q.id)}>
           <Wrench size={14} />
           Maintenance
@@ -426,12 +443,12 @@ export function QuartersPage({ quarters, maintenanceRecords }: { quarters: Quart
           <DataTable
             columns={[
               { header: "S/No.", render: (_q: Quarter, i: number) => i + 1, exportValue: (_q, i) => i + 1 },
+              { header: "Qtr Loc", render: (q: Quarter) => q.colony, sortValue: (q) => q.colony },
+              { header: "Qtr No.", render: (q: Quarter) => q.quarterNo, sortValue: (q) => q.quarterNo },
               { header: "Army No.", render: (q: Quarter) => q.serviceNo ?? "—", sortValue: (q) => q.serviceNo },
               { header: "Rank", render: (q: Quarter) => q.rank ?? "—", sortValue: (q) => q.rank },
               { header: "Name", render: (q: Quarter) => q.name ?? "—", sortValue: (q) => q.name },
               { header: "Unit", render: (q: Quarter) => q.unit ?? "—", sortValue: (q) => q.unit },
-              { header: "Qtr Loc", render: (q: Quarter) => q.colony, sortValue: (q) => q.colony },
-              { header: "Qtr No.", render: (q: Quarter) => q.quarterNo, sortValue: (q) => q.quarterNo },
               { header: "Status", render: (q: Quarter) => <StatusBadge status={q.status} />, sortValue: (q) => q.status },
               { header: "Condition", render: (q: Quarter) => <StatusBadge status={q.condition} />, sortValue: (q) => q.condition },
               {
@@ -461,36 +478,38 @@ export function QuartersPage({ quarters, maintenanceRecords }: { quarters: Quart
                 Back to {TAB_LABELS[cameFromTab]}
               </Button>
             )}
-            <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-            <form onSubmit={handleVacantSubmit} className="flex flex-col gap-4 rounded-card border border-slate-200 bg-white p-5 shadow-sm">
-              <FormField
-                label="Qtr Loc"
-                name="colony"
-                value={vacantForm.colony}
-                onChange={(e) => setVacantForm({ ...vacantForm, colony: e.target.value })}
-                required
-              />
-              <FormField
-                label="Qtr No."
-                name="quarterNo"
-                value={vacantForm.quarterNo}
-                onChange={(e) => {
-                  setVacantForm({ ...vacantForm, quarterNo: e.target.value });
-                  setVacantQuarterNoError("");
-                }}
-                error={vacantQuarterNoError}
-                required
-              />
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-slate-700">Condition</label>
-                <ConditionSelect value={vacantForm.condition} onChange={(v) => setVacantForm({ ...vacantForm, condition: v })} />
-              </div>
-              <Button type="submit" disabled={submitting}>
-                <Plus size={16} />
-                Add Quarter
-              </Button>
-              {error && <p className="text-sm text-red-700">{error}</p>}
-            </form>
+            <div className={isAdmin ? "grid gap-6 lg:grid-cols-[280px_1fr]" : ""}>
+            {isAdmin && (
+              <form onSubmit={handleVacantSubmit} className="flex flex-col gap-4 rounded-card border border-slate-200 bg-white p-5 shadow-sm">
+                <FormField
+                  label="Qtr Loc"
+                  name="colony"
+                  value={vacantForm.colony}
+                  onChange={(e) => setVacantForm({ ...vacantForm, colony: e.target.value })}
+                  required
+                />
+                <FormField
+                  label="Qtr No."
+                  name="quarterNo"
+                  value={vacantForm.quarterNo}
+                  onChange={(e) => {
+                    setVacantForm({ ...vacantForm, quarterNo: e.target.value });
+                    setVacantQuarterNoError("");
+                  }}
+                  error={vacantQuarterNoError}
+                  required
+                />
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-slate-700">Condition</label>
+                  <ConditionSelect value={vacantForm.condition} onChange={(v) => setVacantForm({ ...vacantForm, condition: v })} />
+                </div>
+                <Button type="submit" disabled={submitting}>
+                  <Plus size={16} />
+                  Add Quarter
+                </Button>
+                {error && <p className="text-sm text-red-700">{error}</p>}
+              </form>
+            )}
 
             <DataTable
               columns={[
@@ -603,6 +622,36 @@ export function QuartersPage({ quarters, maintenanceRecords }: { quarters: Quart
               columns={[
                 { header: "S/No.", render: (_q: Quarter, i: number) => i + 1, exportValue: (_q, i) => i + 1 },
                 {
+                  header: "Qtr Loc",
+                  render: (q: Quarter) =>
+                    editingId === q.id ? (
+                      <input value={editDraft.colony} onChange={(e) => setEditDraft({ ...editDraft, colony: e.target.value })} className="w-24 rounded-md border border-slate-300 px-2 py-1 text-sm" />
+                    ) : (
+                      q.colony
+                    ),
+                  sortValue: (q) => q.colony,
+                },
+                {
+                  header: "Qtr No.",
+                  render: (q: Quarter) =>
+                    editingId === q.id ? (
+                      <div>
+                        <input
+                          value={editDraft.quarterNo}
+                          onChange={(e) => {
+                            setEditDraft({ ...editDraft, quarterNo: e.target.value });
+                            setEditQuarterNoError("");
+                          }}
+                          className="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                        />
+                        {editQuarterNoError && <p className="mt-1 text-xs text-red-600">{editQuarterNoError}</p>}
+                      </div>
+                    ) : (
+                      q.quarterNo
+                    ),
+                  sortValue: (q) => q.quarterNo,
+                },
+                {
                   header: "Army No.",
                   render: (q: Quarter) =>
                     editingId === q.id ? (
@@ -643,36 +692,6 @@ export function QuartersPage({ quarters, maintenanceRecords }: { quarters: Quart
                   sortValue: (q) => q.unit,
                 },
                 {
-                  header: "Qtr Loc",
-                  render: (q: Quarter) =>
-                    editingId === q.id ? (
-                      <input value={editDraft.colony} onChange={(e) => setEditDraft({ ...editDraft, colony: e.target.value })} className="w-24 rounded-md border border-slate-300 px-2 py-1 text-sm" />
-                    ) : (
-                      q.colony
-                    ),
-                  sortValue: (q) => q.colony,
-                },
-                {
-                  header: "Qtr No.",
-                  render: (q: Quarter) =>
-                    editingId === q.id ? (
-                      <div>
-                        <input
-                          value={editDraft.quarterNo}
-                          onChange={(e) => {
-                            setEditDraft({ ...editDraft, quarterNo: e.target.value });
-                            setEditQuarterNoError("");
-                          }}
-                          className="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm"
-                        />
-                        {editQuarterNoError && <p className="mt-1 text-xs text-red-600">{editQuarterNoError}</p>}
-                      </div>
-                    ) : (
-                      q.quarterNo
-                    ),
-                  sortValue: (q) => q.quarterNo,
-                },
-                {
                   header: "Condition",
                   render: (q: Quarter) =>
                     editingId === q.id ? (
@@ -687,6 +706,11 @@ export function QuartersPage({ quarters, maintenanceRecords }: { quarters: Quart
                   render: (q: Quarter) => maintenanceTagCell(q),
                   sortValue: (q) => (q.underMaintenance ? 1 : 0),
                   exportValue: (q) => (q.underMaintenance ? "Yes" : "No"),
+                },
+                {
+                  header: "Date Added",
+                  render: (q: Quarter) => stackedDateTime(q.createdAt),
+                  sortValue: (q) => q.createdAt,
                 },
                 { header: "Action", render: (q: Quarter) => actionCell(q) },
               ]}
@@ -703,6 +727,16 @@ export function QuartersPage({ quarters, maintenanceRecords }: { quarters: Quart
           <DataTable
             columns={[
               { header: "S/No.", render: (_r: MaintenanceRecord, i: number) => i + 1, exportValue: (_r, i) => i + 1 },
+              { header: "Qtr Loc", render: (r: MaintenanceRecord) => r.colony, sortValue: (r) => r.colony },
+              {
+                header: "Qtr No.",
+                render: (r: MaintenanceRecord) => (
+                  <button onClick={() => goToQuarter(r.quarterId)} className="text-blue-600 hover:text-blue-800 hover:underline">
+                    {r.quarterNo}
+                  </button>
+                ),
+                sortValue: (r) => r.quarterNo,
+              },
               {
                 header: "Army No.",
                 render: (r: MaintenanceRecord) =>
@@ -716,16 +750,6 @@ export function QuartersPage({ quarters, maintenanceRecords }: { quarters: Quart
                 sortValue: (r) => r.serviceNo,
               },
               { header: "Name", render: (r: MaintenanceRecord) => r.name ?? "—", sortValue: (r) => r.name },
-              { header: "Qtr Loc", render: (r: MaintenanceRecord) => r.colony, sortValue: (r) => r.colony },
-              {
-                header: "Qtr No.",
-                render: (r: MaintenanceRecord) => (
-                  <button onClick={() => goToQuarter(r.quarterId)} className="text-blue-600 hover:text-blue-800 hover:underline">
-                    {r.quarterNo}
-                  </button>
-                ),
-                sortValue: (r) => r.quarterNo,
-              },
               { header: "Status (before)", render: (r: MaintenanceRecord) => <StatusBadge status={r.statusBeforeMaintenance} />, sortValue: (r) => r.statusBeforeMaintenance },
               {
                 header: "Condition",

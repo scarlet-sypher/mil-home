@@ -83,13 +83,21 @@ export async function createOccupiedQuarter(input: {
   }
 }
 
-export async function updateQuarter(id: number, input: QuarterUpdateInput) {
+export async function updateQuarter(id: number, input: QuarterUpdateInput, actorRole: "ADMIN" | "USER") {
   const quarter = await prisma.quarter.findUnique({ where: { id } });
   if (!quarter) {
     throw new QuarterError("Quarter not found.", 404);
   }
   const definedFields = Object.entries(input).filter(([, value]) => value !== undefined);
   const isConditionOnlyUpdate = definedFields.length === 1 && definedFields[0][0] === "condition";
+
+  // Editing a vacant quarter's record is an admin-only action. The condition-only
+  // path is exempted since that's the Maintenance tab's quick status dropdown,
+  // open to any user, not the Vacant tab's edit form.
+  if (quarter.status === "VACANT" && !isConditionOnlyUpdate && actorRole !== "ADMIN") {
+    throw new QuarterError("Only an admin can edit a vacant quarter.", 403);
+  }
+
   if (quarter.underMaintenance && !isConditionOnlyUpdate) {
     throw new QuarterError("This quarter is currently under maintenance and cannot be edited.", 409);
   }
@@ -104,10 +112,14 @@ export async function updateQuarter(id: number, input: QuarterUpdateInput) {
   }
 }
 
-export async function deleteQuarter(id: number) {
+export async function deleteQuarter(id: number, actorRole: "ADMIN" | "USER") {
   const quarter = await prisma.quarter.findUnique({ where: { id } });
   if (!quarter) {
     throw new QuarterError("Quarter not found.", 404);
+  }
+  // Deleting a vacant quarter's record is an admin-only action.
+  if (quarter.status === "VACANT" && actorRole !== "ADMIN") {
+    throw new QuarterError("Only an admin can delete a vacant quarter.", 403);
   }
   if (quarter.underMaintenance) {
     throw new QuarterError("This quarter is currently under maintenance and cannot be deleted.", 409);

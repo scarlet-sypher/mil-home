@@ -40,10 +40,10 @@ export function DonutChart({
               />
             );
           })}
-      <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle" className="fill-slate-900 text-xl font-bold">
+      <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle" className="fill-slate-900 text-[22px] font-bold">
         {total}
       </text>
-      <text x="50%" y="64%" textAnchor="middle" dominantBaseline="middle" className="fill-slate-500 text-[10px] uppercase tracking-wide">
+      <text x="50%" y="64%" textAnchor="middle" dominantBaseline="middle" className="fill-slate-500 text-xs uppercase tracking-wide">
         Total
       </text>
     </svg>
