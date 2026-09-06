@@ -346,7 +346,7 @@ end;
 procedure RunCriticalStep(const FileName, Parameters, WorkingDir, StepDescription: String);
 var
   ResultCode: Integer;
-  OutFile, CmdLine: String;
+  OutFile, BatFile, CmdLine: String;
   OutputRaw: AnsiString; // LoadStringFromFile's var-parameter requires AnsiString exactly
   Output: String;
 begin
@@ -354,12 +354,24 @@ begin
   WizardForm.Update;
   Log('RunCriticalStep: starting "' + StepDescription + '"');
 
-  // Route through cmd.exe to capture stdout+stderr -- Exec() alone gives no way to see
-  // what the process actually printed, which is exactly why the first time this step
-  // failed for real, all we knew was "exit code 1" with no clue why. Same technique
-  // RunPowerShell already uses successfully above.
+  // Route through a temporary .bat file rather than a single giant cmd.exe /C string --
+  // this call was actually failing for real ('"node"' is not recognized) because npx's
+  // own internal mechanism for running the "prisma" command spawns a NESTED shim
+  // (prisma.cmd) that itself calls a bare, unqualified "node", relying on PATH. Passing
+  // GetNodeExe()'s resolved absolute path only fixes the outer call -- it does nothing
+  // for that nested lookup, since the installer's own long-lived process never sees a
+  // PATH refresh after Node was (maybe) just silently installed in this same run. A
+  // temp .bat that explicitly sets PATH first fixes it for the whole child process
+  // tree, however many shells/shims are nested underneath, and is far more debuggable
+  // than yet another giant escaped one-liner.
   OutFile := ExpandConstant('{tmp}') + '\critical_step_' + IntToStr(Random(1000000)) + '.txt';
-  CmdLine := '/C ""' + FileName + '" ' + Parameters + ' > "' + OutFile + '" 2>&1"';
+  BatFile := ExpandConstant('{tmp}') + '\critical_step_' + IntToStr(Random(1000000)) + '.bat';
+  SaveStringToFile(BatFile,
+    '@echo off' + #13#10 +
+    'SET "PATH=' + GetNodeDirForCli('') + ';%PATH%"' + #13#10 +
+    '"' + FileName + '" ' + Parameters + #13#10,
+    False);
+  CmdLine := '/C ""' + BatFile + '" > "' + OutFile + '" 2>&1"';
 
   if not Exec(ExpandConstant('{cmd}'), CmdLine, WorkingDir, SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
@@ -373,6 +385,7 @@ begin
     LoadStringFromFile(OutFile, OutputRaw);
     DeleteFile(OutFile);
   end;
+  DeleteFile(BatFile);
   Output := String(OutputRaw);
   if Length(Output) > 4000 then
     Output := '...(truncated)...' + Copy(Output, Length(Output) - 4000, 4000);
