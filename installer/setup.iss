@@ -102,7 +102,12 @@ Filename: "{sys}\sc.exe"; Parameters: "stop {#PgServiceName}"; Flags: runhidden 
 Filename: "{sys}\sc.exe"; Parameters: "delete {#PgServiceName}"; Flags: runhidden waituntilterminated skipifdoesntexist
 
 [UninstallDelete]
-Type: filesandordirs; Name: "{app}\pgsql"
+; {app} as a whole (not just {app}\pgsql) -- Inno's uninstaller only auto-removes files
+; it directly tracked via [Files]; .env and .runtime\heartbeat.txt are both created by
+; [Run]-executed scripts at install/runtime, never tracked, and would otherwise survive
+; uninstall sitting in an oddly-non-empty Program Files folder ({app}\pgsql is nested
+; under here too, so covered either way).
+Type: filesandordirs; Name: "{app}"
 Type: filesandordirs; Name: "C:\ProgramData\MIL-HOME"
 
 [Code]
