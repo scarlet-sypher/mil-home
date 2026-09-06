@@ -1,0 +1,247 @@
+name: Build Windows installer
+
+on:
+  push:
+    branches: [master]
+    paths: &installer_paths
+      - "installer/**"
+      - "launcher/**"
+      - ".github/workflows/build-installer.yml"
+      - "app/**"
+      - "client/**"
+      - "server/**"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.js"
+      - "middleware.ts"
+      - "instrumentation.ts"
+  pull_request:
+    branches: [master]
+    paths: *installer_paths
+  workflow_dispatch: {}
+
+env:
+  # Bump these two lines to change what ships inside the installer -- nothing else in
+  # this workflow or in installer/setup.iss needs to change alongside a version bump.
+  NODE_PIN_VERSION: "20.18.1"
+  POSTGRES_PIN_VERSION: "16.6-1"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # This builds the app itself (uses the runner's own Node from setup-node above --
+      # unrelated to the Node version pinned into the installer for end users).
+      - name: Install dependencies and build
+        run: |
+          npm ci
+          npm run db:generate
+          npm run build
+
+      - name: Stage app files for packaging
+        shell: pwsh
+        run: |
+          $staging = "installer/staging/app"
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+          # .next (the production build output from the step above) must be included --
+          # only .git, dev node_modules, this installer/ tree, and the launcher/ source
+          # project (published separately below, not hand-copied) are excluded.
+          robocopy . $staging /E /XD .git node_modules installer launcher /XF .env /NFL /NDL /NJH /NJS
+          if ($LASTEXITCODE -ge 8) { throw "robocopy failed with exit code $LASTEXITCODE" }
+
+          Push-Location $staging
+          # Production-only deps, then regenerate the Prisma client *in this copy*.
+          # This is the one that matters: running on windows-latest here is what
+          # produces the Windows-native query engine binary that actually ships to the
+          # end user -- a build produced on macOS can never contain this.
+          npm ci --omit=dev
+          npm run db:generate
+          Pop-Location
+
+      - name: Publish launcher
+        run: >
+          dotnet publish launcher/MilHomeLauncher/MilHomeLauncher.csproj -c Release -r win-x64
+          --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -o installer/staging/app/launcher
+
+      - name: Download pinned Node.js installer (checksum-verified)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path installer/redist | Out-Null
+          $version = "$env:NODE_PIN_VERSION"
+          $msiUrl = "https://nodejs.org/dist/v$version/node-v$version-x64.msi"
+          $shaUrl = "https://nodejs.org/dist/v$version/SHASUMS256.txt"
+          $msiPath = "installer/redist/node-installer.msi"
+
+          Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath
+          $shasums = Invoke-WebRequest -Uri $shaUrl -UseBasicParsing | Select-Object -ExpandProperty Content
+          $expectedLine = $shasums -split "`n" | Where-Object { $_ -match "node-v$version-x64\.msi" }
+          if (-not $expectedLine) { throw "Could not find node-v$version-x64.msi in nodejs.org's published SHASUMS256.txt" }
+          $expectedHash = ($expectedLine -split '\s+')[0].Trim()
+          $actualHash = (Get-FileHash -Path $msiPath -Algorithm SHA256).Hash
+          if ($actualHash -ne $expectedHash.ToUpper()) {
+            throw "Node MSI checksum mismatch: expected $expectedHash, got $actualHash"
+          }
+          Write-Host "Node MSI checksum verified against nodejs.org's published SHASUMS256.txt."
+
+      - name: Download pinned PostgreSQL installer
+        shell: pwsh
+        run: |
+          # NOTE: EnterpriseDB does not publish a machine-readable checksum manifest the
+          # way nodejs.org does, so unlike the Node download above this can only verify
+          # the download happened over HTTPS from EDB's official host -- it cannot yet
+          # verify file integrity against a known-good hash. The computed SHA256 is
+          # printed below; a maintainer should confirm it once (e.g. against EDB's
+          # download-page checksum, if/when they publish one for this exact build) and
+          # then this step should be hardened to assert against a pinned value the same
+          # way the Node step does.
+          $version = "$env:POSTGRES_PIN_VERSION"
+          $url = "https://get.enterprisedb.com/postgresql/postgresql-$version-windows-x64.exe"
+          $exePath = "installer/redist/postgresql-installer.exe"
+          Invoke-WebRequest -Uri $url -OutFile $exePath
+          $hash = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash
+          Write-Host "Downloaded PostgreSQL installer $version. SHA256: $hash (unverified -- see note above)."
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Compile installer
+        shell: cmd
+        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\setup.iss'
+
+      - name: Smoke test -- silent install
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem -Path installer -Filter "mil-home-setup.exe" -Recurse | Select-Object -First 1
+          if (-not $setup) { throw "Compiled installer not found" }
+          $installLog = "C:\mil-home-install.log"
+          Start-Process -FilePath $setup.FullName -ArgumentList "/verysilent","/suppressmsgboxes","/norestart","/LOG=$installLog" -Wait
+
+          # Dump Inno's own step-by-step log unconditionally, before any assertions --
+          # so a failure below still leaves this in the CI output to debug from,
+          # instead of guessing blind at what each [Run] entry actually did.
+          Write-Host "----- Inno Setup install log ($installLog) -----"
+          if (Test-Path $installLog) {
+            Get-Content $installLog | ForEach-Object { Write-Host $_ }
+          } else {
+            Write-Host "(no log file found at $installLog)"
+          }
+          Write-Host "----- end install log -----"
+
+          $service = Get-Service -Name "mil-home-postgresql" -ErrorAction SilentlyContinue
+          if (-not $service) { throw "mil-home-postgresql service was not created" }
+          if ($service.Status -ne "Running") { throw "mil-home-postgresql service is not running (status: $($service.Status))" }
+
+          $envPath = "C:\Program Files\MIL-HOME\.env"
+          if (-not (Test-Path $envPath)) { throw ".env was not written to the install directory" }
+          $envContent = Get-Content $envPath -Raw
+          if ($envContent -notmatch "DATABASE_URL=.*127\.0\.0\.1:(\d+)/mil_home") { throw ".env DATABASE_URL is not in the expected shape" }
+          $dbPort = [int]$Matches[1]
+          Write-Host "Dedicated Postgres instance is on port $dbPort"
+
+          # Confirm the loopback-only lockdown actually took effect: a connection
+          # attempt against a non-loopback local IP on the same port must fail.
+          $lanIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne "127.0.0.1" -and $_.PrefixOrigin -ne "WellKnown" } | Select-Object -First 1).IPAddress
+          if ($lanIp) {
+            $probe = Test-NetConnection -ComputerName $lanIp -Port $dbPort -WarningAction SilentlyContinue
+            if ($probe.TcpTestSucceeded) { throw "Postgres is reachable on non-loopback address $lanIp -- Secure-PostgresNetwork.ps1 did not lock it down" }
+            Write-Host "Confirmed Postgres is unreachable on $lanIp (loopback-only lockdown verified)."
+          } else {
+            Write-Host "No non-loopback IPv4 address found on this runner -- skipping the negative reachability check."
+          }
+
+      - name: Smoke test -- launcher starts app and enforces heartbeat teardown
+        shell: pwsh
+        run: |
+          $launcherExe = "C:\Program Files\MIL-HOME\launcher\MIL-HOME-Launcher.exe"
+          if (-not (Test-Path $launcherExe)) { throw "Launcher exe not found at expected path" }
+
+          # Force the service down first so this run actually exercises the launcher's
+          # "service isn't running, start it" branch, not just the trivial already-up case.
+          Stop-Service -Name "mil-home-postgresql" -Force
+
+          # No dialogs to hang on if an error path is hit on this unattended runner.
+          $env:MIL_HOME_LAUNCHER_TEST_MODE = "1"
+          $launcherLog = "$env:TEMP\mil-home-launcher.log"
+          if (Test-Path $launcherLog) { Remove-Item $launcherLog }
+
+          try {
+            $launcherProc = Start-Process -FilePath $launcherExe -PassThru
+            # OpenBrowser()'s Process.Start(UseShellExecute: true) against an http:// URL
+            # either no-ops or throws inside that one call on a runner with no browser --
+            # either way nothing else in the launcher depends on it, so it doesn't block
+            # the parts under test below.
+
+            $ready = $false
+            for ($i = 0; $i -lt 20; $i++) {
+              try {
+                $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8000/login" -UseBasicParsing -TimeoutSec 2
+                if ($resp.StatusCode -eq 200) { $ready = $true; break }
+              } catch {}
+              Start-Sleep -Seconds 1
+            }
+            if (-not $ready) { throw "Launcher did not bring the app up within 20s" }
+
+            $service = Get-Service -Name "mil-home-postgresql"
+            if ($service.Status -ne "Running") { throw "Launcher did not start the Postgres service" }
+
+            $nodeBefore = Get-Process -Name node -ErrorAction SilentlyContinue
+            if (-not $nodeBefore) { throw "No node.exe process found after the launcher started the app" }
+            Write-Host "Launcher brought the app up; node.exe PID(s): $($nodeBefore.Id -join ',')"
+
+            # Simulate a closed tab: nothing in this headless run ever loads the page, so
+            # no heartbeats are posted. Wait comfortably past the 13s staleness window,
+            # then confirm the launcher actually killed the app -- concrete, automated
+            # proof of heartbeat-driven teardown, not just a disclosed gap.
+            Start-Sleep -Seconds 20
+
+            $nodeAfter = Get-Process -Name node -ErrorAction SilentlyContinue
+            if ($nodeAfter) { throw "node.exe is still running 20s after heartbeats stopped -- launcher did not enforce the staleness timeout" }
+            Write-Host "Confirmed: launcher killed node.exe after heartbeats stopped."
+
+            Wait-Process -Id $launcherProc.Id -Timeout 5 -ErrorAction SilentlyContinue
+          }
+          finally {
+            # Always dump the launcher's own log -- a WinExe app has no console, so this
+            # is the only way to see what it actually did, pass or fail.
+            Write-Host "----- Launcher log ($launcherLog) -----"
+            if (Test-Path $launcherLog) {
+              Get-Content $launcherLog | ForEach-Object { Write-Host $_ }
+            } else {
+              Write-Host "(no log file found at $launcherLog)"
+            }
+            Write-Host "----- end launcher log -----"
+          }
+
+      - name: Smoke test -- silent uninstall cleans up
+        shell: pwsh
+        run: |
+          $uninstaller = Get-ChildItem -Path "C:\Program Files\MIL-HOME" -Filter "unins*.exe" | Select-Object -First 1
+          if (-not $uninstaller) { throw "Uninstaller not found" }
+          Start-Process -FilePath $uninstaller.FullName -ArgumentList "/verysilent","/suppressmsgboxes","/norestart" -Wait
+
+          # Inno's uninstaller can't delete its own running exe directly on Windows, so
+          # it self-deletes via a short-lived helper process after this one exits --
+          # give that a moment before checking the install directory is actually gone.
+          Start-Sleep -Seconds 5
+          $service = Get-Service -Name "mil-home-postgresql" -ErrorAction SilentlyContinue
+          if ($service) { throw "mil-home-postgresql service still exists after uninstall" }
+          if (Test-Path "C:\ProgramData\MIL-HOME") { throw "Dedicated data directory was not removed by the uninstaller" }
+          if (Test-Path "C:\Program Files\MIL-HOME") { throw ".env/.runtime or other untracked files left the install directory non-empty after uninstall" }
+          Write-Host "Uninstall removed the service, its dedicated data directory, and the install directory."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mil-home-setup
+          path: installer/Output/mil-home-setup.exe
+          if-no-files-found: error

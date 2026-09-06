@@ -6,10 +6,12 @@
     "dev": "next dev -H 0.0.0.0 -p 8000",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 8000",
+    "start:desktop": "next start -H 127.0.0.1 -p 8000",
     "lint": "next lint",
     "test": "vitest run",
     "db:generate": "prisma generate --schema=server/db/prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=server/db/prisma/schema.prisma",
+    "db:deploy": "prisma migrate deploy --schema=server/db/prisma/schema.prisma",
     "db:seed": "prisma db seed --schema=server/db/prisma/schema.prisma"
   },
   "prisma": {
