@@ -8,5 +8,4 @@ installer/staging
 installer/*.exe
 launcher/MilHomeLauncher/bin
 launcher/MilHomeLauncher/obj
-.runtime
 .DS_Store

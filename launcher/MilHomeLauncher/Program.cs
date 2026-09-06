@@ -69,7 +69,13 @@ internal static class Program
     private static string AppDir =>
         Path.GetDirectoryName(Path.GetDirectoryName(Environment.ProcessPath!))!;
 
-    private static string HeartbeatPath => Path.Combine(AppDir, ".runtime", "heartbeat.txt");
+    // Must match server/lib/heartbeat.ts's getHeartbeatPath() exactly -- both sides
+    // agree on this fixed name in the OS temp dir specifically because {app} (C:\Program
+    // Files\MIL-HOME) isn't writable by the normal, non-elevated user account this
+    // launcher and the app server both actually run as (only the installer itself runs
+    // elevated). Same reasoning as this launcher's own LogPath, above.
+    private static string HeartbeatPath =>
+        Path.Combine(Path.GetTempPath(), "mil-home-heartbeat.txt");
 
     private static async Task<int> Main()
     {

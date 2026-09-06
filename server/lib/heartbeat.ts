@@ -1,18 +1,20 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
-// Computed per call (not a module-level constant) so it always reflects the process's
-// current working directory -- {app} when the launcher starts the server, the repo
-// root in local dev -- and so tests can point it at a scratch directory.
+// The OS temp dir, not {app} -- the packaged app runs from C:\Program Files\MIL-HOME,
+// which a normal (non-elevated) Windows user account cannot write to, even though the
+// elevated installer itself could write .env there. The launcher's own log file uses
+// the same %TEMP% location for the identical reason, and both sides need to agree on
+// this exact path since the launcher polls it from a separate process.
 function getHeartbeatPath(): string {
-  return path.join(process.cwd(), ".runtime", "heartbeat.txt");
+  return path.join(os.tmpdir(), "mil-home-heartbeat.txt");
 }
 
 // Write-then-rename so the launcher's watcher (a separate process polling this file)
 // never reads a half-written value.
 export function recordHeartbeat(): void {
   const heartbeatPath = getHeartbeatPath();
-  fs.mkdirSync(path.dirname(heartbeatPath), { recursive: true });
   const tempPath = `${heartbeatPath}.tmp`;
   fs.writeFileSync(tempPath, String(Date.now()));
   fs.renameSync(tempPath, heartbeatPath);

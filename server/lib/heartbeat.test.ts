@@ -8,8 +8,8 @@ describe("recordHeartbeat", () => {
   let scratchDir: string;
 
   beforeEach(() => {
-    scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "mil-home-heartbeat-"));
-    vi.spyOn(process, "cwd").mockReturnValue(scratchDir);
+    scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "mil-home-heartbeat-test-"));
+    vi.spyOn(os, "tmpdir").mockReturnValue(scratchDir);
   });
 
   afterEach(() => {
@@ -17,15 +17,15 @@ describe("recordHeartbeat", () => {
     fs.rmSync(scratchDir, { recursive: true, force: true });
   });
 
-  it("creates .runtime/heartbeat.txt under the current working directory", () => {
+  it("creates mil-home-heartbeat.txt in the OS temp dir", () => {
     recordHeartbeat();
-    const heartbeatPath = path.join(scratchDir, ".runtime", "heartbeat.txt");
+    const heartbeatPath = path.join(scratchDir, "mil-home-heartbeat.txt");
     expect(fs.existsSync(heartbeatPath)).toBe(true);
   });
 
   it("changes the file's content on each call", () => {
     recordHeartbeat();
-    const heartbeatPath = path.join(scratchDir, ".runtime", "heartbeat.txt");
+    const heartbeatPath = path.join(scratchDir, "mil-home-heartbeat.txt");
     const first = fs.readFileSync(heartbeatPath, "utf8");
 
     vi.useFakeTimers();
@@ -39,7 +39,7 @@ describe("recordHeartbeat", () => {
 
   it("never leaves a .tmp file behind", () => {
     recordHeartbeat();
-    const tempPath = path.join(scratchDir, ".runtime", "heartbeat.txt.tmp");
+    const tempPath = path.join(scratchDir, "mil-home-heartbeat.txt.tmp");
     expect(fs.existsSync(tempPath)).toBe(false);
   });
 });

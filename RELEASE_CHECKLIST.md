@@ -73,8 +73,16 @@ cleanly alongside both on its own resolved port.
 2. Confirm the default browser actually opens (this is the one visual step CI cannot
    cover — CI has no browser UI session to observe) to the MIL-HOME login page, within
    a few seconds of the double-click.
+3. Open the browser's DevTools console and leave the tab open and idle for a good
+   30-45 seconds. Confirm there are **no 500 or connection-refused errors on
+   `/api/heartbeat`**, and that the page is still reachable after that wait (refresh
+   it). This is the one failure mode CI structurally cannot catch: CI always runs
+   elevated, so a permissions bug on the heartbeat file's location (which only bites a
+   normal, non-elevated end-user account) would silently pass CI while killing the app
+   ~13 seconds into every real launch.
 
-**Pass:** browser opens on its own, login page renders.
+**Pass:** browser opens on its own, login page renders, and the app is still running
+(not silently killed) after 30-45 seconds with the tab left open.
 
 ## 4. Admin bootstrap
 
@@ -133,17 +141,36 @@ fresh launch works and honors the changed credentials.
 ## 8. Uninstall pass
 
 1. On VM A: run the uninstaller (Windows Settings -> Apps, or `unins*.exe` directly in
-   the install folder). Confirm **`mil-home-postgresql`** is gone from Services and
-   `C:\ProgramData\MIL-HOME` no longer exists.
-2. On **VM B** — this is the one that actually matters most for this step — run the
+   the install folder). Confirm **`mil-home-postgresql`** is gone from Services,
+   `C:\ProgramData\MIL-HOME` no longer exists, and **`C:\Program Files\MIL-HOME` itself
+   is gone too** — give it a few seconds first (Inno's uninstaller can't delete its own
+   running exe directly, so it finishes removing the folder via a short-lived helper
+   process after it exits).
+2. Open Control Panel -> **Programs and Features** (or Settings -> Apps). Confirm
+   there is **no leftover "PostgreSQL 16" entry** — EDB's installer registers this
+   separately from the Windows service and the files, and it doesn't get cleaned up by
+   either of those on its own; `setup.iss` explicitly removes this registration too. A
+   **"Node.js" entry is expected to still be there** if this VM's Node was installed by
+   MIL-HOME itself — that's the known, deliberate gap from item 3 below, not a bug.
+3. On **VM B** — this is the one that actually matters most for this step — run the
    uninstaller there too, then confirm:
-   - `mil-home-postgresql` and its data directory are gone, same as VM A.
+   - `mil-home-postgresql`, its data directory, the install directory, and its
+     Programs-and-Features entry are all gone, same as VM A.
    - The **pre-existing, unrelated Postgres instance is completely untouched**: still
-     running, same service, and the canary row from step 0 is still readable
-     (`psql -U postgres -c "SELECT * FROM canary;"`).
+     running, same service, same Programs-and-Features entry, and the canary row from
+     step 0 is still readable (`psql -U postgres -c "SELECT * FROM canary;"`).
+4. **If this VM's Node was installed by MIL-HOME itself** (not pre-existing), be aware:
+   the uninstaller does not remove Node, and its Programs-and-Features entry stays.
+   This is a known, deliberate gap, not a bug — removing a shared runtime another
+   program might since have started depending on would be worse than leaving it. Not
+   something this checklist fails on.
 
-**Pass:** uninstall removes only what this installer created, on both machines,
-leaving VM B's independent Postgres instance exactly as it was.
+**Pass:** uninstall removes the service, its dedicated data, the entire install
+directory (no leftover `.env`), and its Programs-and-Features entry, on both machines
+— leaving VM B's independent Postgres instance (service, files, and
+Programs-and-Features entry) exactly as it was. (The heartbeat file itself lives in the
+OS temp dir, not under the install directory, so it was never part of this concern in
+the first place -- Windows will clean %TEMP% on its own regardless.)
 
 ---
 
