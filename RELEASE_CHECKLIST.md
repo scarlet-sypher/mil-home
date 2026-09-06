@@ -146,23 +146,31 @@ fresh launch works and honors the changed credentials.
    is gone too** — give it a few seconds first (Inno's uninstaller can't delete its own
    running exe directly, so it finishes removing the folder via a short-lived helper
    process after it exits).
-2. On **VM B** — this is the one that actually matters most for this step — run the
+2. Open Control Panel -> **Programs and Features** (or Settings -> Apps). Confirm
+   there is **no leftover "PostgreSQL 16" entry** — EDB's installer registers this
+   separately from the Windows service and the files, and it doesn't get cleaned up by
+   either of those on its own; `setup.iss` explicitly removes this registration too. A
+   **"Node.js" entry is expected to still be there** if this VM's Node was installed by
+   MIL-HOME itself — that's the known, deliberate gap from item 3 below, not a bug.
+3. On **VM B** — this is the one that actually matters most for this step — run the
    uninstaller there too, then confirm:
-   - `mil-home-postgresql`, its data directory, and the install directory are all gone,
-     same as VM A.
+   - `mil-home-postgresql`, its data directory, the install directory, and its
+     Programs-and-Features entry are all gone, same as VM A.
    - The **pre-existing, unrelated Postgres instance is completely untouched**: still
-     running, same service, and the canary row from step 0 is still readable
-     (`psql -U postgres -c "SELECT * FROM canary;"`).
-3. **If this VM's Node was installed by MIL-HOME itself** (not pre-existing), be aware:
-   the uninstaller does not remove Node. This is a known, deliberate gap, not a bug —
-   removing a shared runtime another program might since have started depending on
-   would be worse than leaving it. Not something this checklist fails on.
+     running, same service, same Programs-and-Features entry, and the canary row from
+     step 0 is still readable (`psql -U postgres -c "SELECT * FROM canary;"`).
+4. **If this VM's Node was installed by MIL-HOME itself** (not pre-existing), be aware:
+   the uninstaller does not remove Node, and its Programs-and-Features entry stays.
+   This is a known, deliberate gap, not a bug — removing a shared runtime another
+   program might since have started depending on would be worse than leaving it. Not
+   something this checklist fails on.
 
-**Pass:** uninstall removes the service, its dedicated data, and the entire install
-directory (no leftover `.env`) on both machines, leaving VM B's independent Postgres
-instance exactly as it was. (The heartbeat file itself lives in the OS temp dir, not
-under the install directory, so it was never part of this concern in the first place --
-Windows will clean %TEMP% on its own regardless.)
+**Pass:** uninstall removes the service, its dedicated data, the entire install
+directory (no leftover `.env`), and its Programs-and-Features entry, on both machines
+— leaving VM B's independent Postgres instance (service, files, and
+Programs-and-Features entry) exactly as it was. (The heartbeat file itself lives in the
+OS temp dir, not under the install directory, so it was never part of this concern in
+the first place -- Windows will clean %TEMP% on its own regardless.)
 
 ---
 

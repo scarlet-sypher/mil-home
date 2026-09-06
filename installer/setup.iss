@@ -303,3 +303,47 @@ begin
   end;
   Result := ChosenPortStr;
 end;
+
+// The EDB Postgres installer registers its own separate "PostgreSQL 16" entry in
+// Windows' Programs and Features / Add-Remove-Programs list -- entirely independent of
+// the mil-home-postgresql Windows service ([UninstallRun] above) and the files under
+// {app}\pgsql ([UninstallDelete] above). Neither of those touches this registration, so
+// left alone it survives uninstall as an orphaned entry pointing at an uninstaller
+// whose files we just deleted. Only ever removes an entry whose own InstallLocation is
+// under this app's dedicated {app}\pgsql -- never touches any other Postgres
+// installation's Add/Remove Programs entry.
+procedure RemoveOrphanedPostgresUninstallEntry();
+var
+  UninstallKeyRoot, KeyPath, InstallLocation, OwnPgsqlDir: String;
+  SubkeyNames: TArrayOfString;
+  I: Integer;
+begin
+  OwnPgsqlDir := Lowercase(ExpandConstant('{app}\pgsql'));
+  UninstallKeyRoot := 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall';
+
+  if not RegGetSubkeyNames(HKLM, UninstallKeyRoot, SubkeyNames) then
+  begin
+    Log('RemoveOrphanedPostgresUninstallEntry: could not enumerate ' + UninstallKeyRoot);
+    exit;
+  end;
+
+  for I := 0 to GetArrayLength(SubkeyNames) - 1 do
+  begin
+    KeyPath := UninstallKeyRoot + '\' + SubkeyNames[I];
+    if RegQueryStringValue(HKLM, KeyPath, 'InstallLocation', InstallLocation) then
+    begin
+      if Pos(OwnPgsqlDir, Lowercase(InstallLocation)) = 1 then
+      begin
+        Log('Removing orphaned Add/Remove Programs entry: ' + KeyPath + ' (InstallLocation=' + InstallLocation + ')');
+        if not RegDeleteKeyIncludingSubkeys(HKLM, KeyPath) then
+          Log('RemoveOrphanedPostgresUninstallEntry: failed to delete ' + KeyPath);
+      end;
+    end;
+  end;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+    RemoveOrphanedPostgresUninstallEntry();
+end;

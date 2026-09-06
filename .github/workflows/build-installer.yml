@@ -238,7 +238,16 @@ jobs:
           if ($service) { throw "mil-home-postgresql service still exists after uninstall" }
           if (Test-Path "C:\ProgramData\MIL-HOME") { throw "Dedicated data directory was not removed by the uninstaller" }
           if (Test-Path "C:\Program Files\MIL-HOME") { throw ".env/.runtime or other untracked files left the install directory non-empty after uninstall" }
-          Write-Host "Uninstall removed the service, its dedicated data directory, and the install directory."
+
+          # EDB's Postgres installer registers its own separate Programs and Features
+          # entry, independent of the service and files already checked above -- confirm
+          # setup.iss's RemoveOrphanedPostgresUninstallEntry actually cleaned it up,
+          # rather than leaving a dangling entry pointing at a now-deleted uninstaller.
+          $orphanedEntry = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" -ErrorAction SilentlyContinue |
+            Where-Object { $_.InstallLocation -like "C:\Program Files\MIL-HOME\pgsql*" }
+          if ($orphanedEntry) { throw "Orphaned PostgreSQL Programs-and-Features entry still exists after uninstall: $($orphanedEntry.DisplayName)" }
+
+          Write-Host "Uninstall removed the service, its dedicated data directory, the install directory, and the Postgres Add/Remove Programs entry."
 
       - uses: actions/upload-artifact@v4
         with:
