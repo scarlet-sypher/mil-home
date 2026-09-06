@@ -73,8 +73,16 @@ cleanly alongside both on its own resolved port.
 2. Confirm the default browser actually opens (this is the one visual step CI cannot
    cover — CI has no browser UI session to observe) to the MIL-HOME login page, within
    a few seconds of the double-click.
+3. Open the browser's DevTools console and leave the tab open and idle for a good
+   30-45 seconds. Confirm there are **no 500 or connection-refused errors on
+   `/api/heartbeat`**, and that the page is still reachable after that wait (refresh
+   it). This is the one failure mode CI structurally cannot catch: CI always runs
+   elevated, so a permissions bug on the heartbeat file's location (which only bites a
+   normal, non-elevated end-user account) would silently pass CI while killing the app
+   ~13 seconds into every real launch.
 
-**Pass:** browser opens on its own, login page renders.
+**Pass:** browser opens on its own, login page renders, and the app is still running
+(not silently killed) after 30-45 seconds with the tab left open.
 
 ## 4. Admin bootstrap
 
@@ -151,8 +159,10 @@ fresh launch works and honors the changed credentials.
    would be worse than leaving it. Not something this checklist fails on.
 
 **Pass:** uninstall removes the service, its dedicated data, and the entire install
-directory (no leftover `.env` or `.runtime` files) on both machines, leaving VM B's
-independent Postgres instance exactly as it was.
+directory (no leftover `.env`) on both machines, leaving VM B's independent Postgres
+instance exactly as it was. (The heartbeat file itself lives in the OS temp dir, not
+under the install directory, so it was never part of this concern in the first place --
+Windows will clean %TEMP% on its own regardless.)
 
 ---
 
