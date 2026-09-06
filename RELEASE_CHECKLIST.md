@@ -133,17 +133,26 @@ fresh launch works and honors the changed credentials.
 ## 8. Uninstall pass
 
 1. On VM A: run the uninstaller (Windows Settings -> Apps, or `unins*.exe` directly in
-   the install folder). Confirm **`mil-home-postgresql`** is gone from Services and
-   `C:\ProgramData\MIL-HOME` no longer exists.
+   the install folder). Confirm **`mil-home-postgresql`** is gone from Services,
+   `C:\ProgramData\MIL-HOME` no longer exists, and **`C:\Program Files\MIL-HOME` itself
+   is gone too** — give it a few seconds first (Inno's uninstaller can't delete its own
+   running exe directly, so it finishes removing the folder via a short-lived helper
+   process after it exits).
 2. On **VM B** — this is the one that actually matters most for this step — run the
    uninstaller there too, then confirm:
-   - `mil-home-postgresql` and its data directory are gone, same as VM A.
+   - `mil-home-postgresql`, its data directory, and the install directory are all gone,
+     same as VM A.
    - The **pre-existing, unrelated Postgres instance is completely untouched**: still
      running, same service, and the canary row from step 0 is still readable
      (`psql -U postgres -c "SELECT * FROM canary;"`).
+3. **If this VM's Node was installed by MIL-HOME itself** (not pre-existing), be aware:
+   the uninstaller does not remove Node. This is a known, deliberate gap, not a bug —
+   removing a shared runtime another program might since have started depending on
+   would be worse than leaving it. Not something this checklist fails on.
 
-**Pass:** uninstall removes only what this installer created, on both machines,
-leaving VM B's independent Postgres instance exactly as it was.
+**Pass:** uninstall removes the service, its dedicated data, and the entire install
+directory (no leftover `.env` or `.runtime` files) on both machines, leaving VM B's
+independent Postgres instance exactly as it was.
 
 ---
 
