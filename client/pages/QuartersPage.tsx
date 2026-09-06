@@ -10,6 +10,7 @@ import { DataTable } from "@/client/components/DataTable";
 import { StatusBadge } from "@/client/components/StatusBadge";
 import { ConfirmDialog } from "@/client/components/ConfirmDialog";
 import { RemarkCell } from "@/client/components/RemarkCell";
+import { QrCodeButton } from "@/client/components/QrCodeButton";
 import { formatDateTime } from "@/client/lib/format-date";
 
 type Quarter = {
@@ -725,6 +726,7 @@ export function QuartersPage({
 
         {tab === "MAINTENANCE" && (
           <DataTable
+            toolbarExtra={<QrCodeButton />}
             columns={[
               { header: "S/No.", render: (_r: MaintenanceRecord, i: number) => i + 1, exportValue: (_r, i) => i + 1 },
               { header: "Qtr Loc", render: (r: MaintenanceRecord) => r.colony, sortValue: (r) => r.colony },

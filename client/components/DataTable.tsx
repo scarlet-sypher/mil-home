@@ -21,6 +21,7 @@ type DataTableProps<T> = {
   emptyMessage?: string;
   rowClassName?: (row: T) => string;
   title?: string;
+  toolbarExtra?: ReactNode;
 };
 
 type SortDirection = "asc" | "desc";
@@ -137,6 +138,7 @@ export function DataTable<T>({
   emptyMessage = "No records yet.",
   rowClassName,
   title = "Export",
+  toolbarExtra,
 }: DataTableProps<T>) {
   const [sortIndex, setSortIndex] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -170,7 +172,8 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-2">
+        {toolbarExtra}
         <ExportMenu columns={columns} rows={sortedRows} title={title} />
       </div>
       <div className="overflow-x-auto rounded-md border border-slate-200">
