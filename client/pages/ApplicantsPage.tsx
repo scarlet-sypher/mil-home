@@ -11,6 +11,7 @@ import { StatusBadge } from "@/client/components/StatusBadge";
 import { Modal } from "@/client/components/Modal";
 import { RemarkCell } from "@/client/components/RemarkCell";
 import { formatDate } from "@/client/lib/format-date";
+import { safeParseJson } from "@/client/lib/safe-json";
 
 type Quarter = { colony: string; quarterNo: string };
 type Allotment = { quarter: Quarter };
@@ -67,7 +68,7 @@ export function ApplicantsPage({ applicants }: { applicants: Applicant[] }) {
     });
 
     if (!response.ok) {
-      const data = await response.json();
+      const data = await safeParseJson<{ error?: string; field?: string }>(response, {});
       if (data.field === "serviceNo") {
         setServiceNoError(data.error ?? "This army number is already in use.");
       } else {

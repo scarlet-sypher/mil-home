@@ -9,6 +9,7 @@ import { DataTable } from "@/client/components/DataTable";
 import { RemarkCell } from "@/client/components/RemarkCell";
 import { SearchableSelect } from "@/client/components/SearchableSelect";
 import { StatusSelect, STATUS_COLORS } from "@/client/components/StatusSelect";
+import { readErrorMessage } from "@/client/lib/safe-json";
 
 const COMPLAINT_STATUSES = ["OPEN", "IN_PROGRESS", "WAITING", "BLOCKED", "CLOSED"];
 
@@ -70,8 +71,7 @@ export function ComplaintsPage({
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      setError(data.error ?? "Something went wrong.");
+      setError(await readErrorMessage(response));
       setSubmitting(false);
       return;
     }
@@ -89,8 +89,7 @@ export function ComplaintsPage({
       body: JSON.stringify({ status }),
     });
     if (!response.ok) {
-      const data = await response.json();
-      setPageError(data.error ?? "Could not update this complaint's status.");
+      setPageError(await readErrorMessage(response, "Could not update this complaint's status."));
       return;
     }
     router.refresh();
@@ -104,8 +103,7 @@ export function ComplaintsPage({
       body: JSON.stringify({ remark: remarkDrafts[id] ?? "" }),
     });
     if (!response.ok) {
-      const data = await response.json();
-      setPageError(data.error ?? "Could not save this remark.");
+      setPageError(await readErrorMessage(response, "Could not save this remark."));
       return;
     }
     router.refresh();

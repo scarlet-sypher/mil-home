@@ -1,3 +1,4 @@
 import { handleStartMaintenance } from "@/server/controllers/maintenance.controller";
+import { withErrorHandling } from "@/server/lib/api-error-handler";
 
-export const POST = handleStartMaintenance;
+export const POST = withErrorHandling(handleStartMaintenance);

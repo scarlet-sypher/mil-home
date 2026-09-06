@@ -9,6 +9,7 @@ import { DataTable } from "@/client/components/DataTable";
 import { StatusBadge } from "@/client/components/StatusBadge";
 import { SearchableSelect } from "@/client/components/SearchableSelect";
 import { ConfirmDialog } from "@/client/components/ConfirmDialog";
+import { readErrorMessage } from "@/client/lib/safe-json";
 
 type Applicant = { id: number; name: string; serviceNo: string };
 type Quarter = { id: number; quarterNo: string; colony: string };
@@ -60,8 +61,7 @@ export function AllotmentsPage({
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      setError(data.error ?? "Something went wrong.");
+      setError(await readErrorMessage(response));
       setSubmitting(false);
       return;
     }
@@ -76,8 +76,7 @@ export function AllotmentsPage({
     setPageError("");
     const response = await fetch(`/api/allotments/${id}/approve`, { method: "POST" });
     if (!response.ok) {
-      const data = await response.json();
-      setPageError(data.error ?? "Could not approve this allotment.");
+      setPageError(await readErrorMessage(response, "Could not approve this allotment."));
       return;
     }
     router.refresh();
@@ -87,8 +86,7 @@ export function AllotmentsPage({
     setPageError("");
     const response = await fetch(`/api/allotments/${id}/reallocate`, { method: "POST" });
     if (!response.ok) {
-      const data = await response.json();
-      setPageError(data.error ?? "Could not allocate this quarter.");
+      setPageError(await readErrorMessage(response, "Could not allocate this quarter."));
       return;
     }
     router.refresh();
@@ -114,8 +112,7 @@ export function AllotmentsPage({
     const endpoint = pendingAction.type === "reject" ? "reject" : "unallocate";
     const response = await fetch(`/api/allotments/${pendingAction.id}/${endpoint}`, { method: "POST" });
     if (!response.ok) {
-      const data = await response.json();
-      setPageError(data.error ?? `Could not ${endpoint} this allotment.`);
+      setPageError(await readErrorMessage(response, `Could not ${endpoint} this allotment.`));
       closeDialog();
       return;
     }

@@ -1,2 +1,3 @@
 import { handleLogout } from "@/server/controllers/auth.controller";
-export const POST = handleLogout;
+import { withErrorHandling } from "@/server/lib/api-error-handler";
+export const POST = withErrorHandling(handleLogout);

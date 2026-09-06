@@ -1,2 +1,3 @@
 import { handleSignup } from "@/server/controllers/auth.controller";
-export const POST = handleSignup;
+import { withErrorHandling } from "@/server/lib/api-error-handler";
+export const POST = withErrorHandling(handleSignup);

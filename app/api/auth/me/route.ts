@@ -1,2 +1,3 @@
 import { handleMe } from "@/server/controllers/auth.controller";
-export const GET = handleMe;
+import { withErrorHandling } from "@/server/lib/api-error-handler";
+export const GET = withErrorHandling(handleMe);

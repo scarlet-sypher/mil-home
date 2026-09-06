@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/client/components/ConfirmDialog";
 import { RemarkCell } from "@/client/components/RemarkCell";
 import { QrCodeButton } from "@/client/components/QrCodeButton";
 import { formatDateTime } from "@/client/lib/format-date";
+import { readErrorMessage, safeParseJson } from "@/client/lib/safe-json";
 
 type Quarter = {
   id: number;
@@ -148,7 +149,7 @@ export function QuartersPage({
     });
 
     if (!response.ok) {
-      const data = await response.json();
+      const data = await safeParseJson<{ error?: string; field?: string }>(response, {});
       if (data.field === "quarterNo") {
         setVacantQuarterNoError(data.error ?? "This quarter number is already in use.");
       } else {
@@ -176,7 +177,7 @@ export function QuartersPage({
     });
 
     if (!response.ok) {
-      const data = await response.json();
+      const data = await safeParseJson<{ error?: string; field?: string }>(response, {});
       if (data.field === "quarterNo") {
         setOccupiedQuarterNoError(data.error ?? "This quarter number is already in use.");
       } else {
@@ -224,7 +225,7 @@ export function QuartersPage({
     });
 
     if (!response.ok) {
-      const data = await response.json();
+      const data = await safeParseJson<{ error?: string; field?: string }>(response, {});
       if (data.field === "quarterNo") {
         setEditQuarterNoError(data.error ?? "This quarter number is already in use.");
       } else {
@@ -270,8 +271,7 @@ export function QuartersPage({
     if (pendingAction.type === "delete") {
       const response = await fetch(`/api/quarters/${pendingAction.id}`, { method: "DELETE" });
       if (!response.ok) {
-        const data = await response.json();
-        setPageError(data.error ?? "Could not delete this record.");
+        setPageError(await readErrorMessage(response, "Could not delete this record."));
         closeDialog();
         return;
       }
@@ -282,8 +282,7 @@ export function QuartersPage({
         body: JSON.stringify({ remark: dialogRemark }),
       });
       if (!response.ok) {
-        const data = await response.json();
-        setPageError(data.error ?? "Could not start maintenance.");
+        setPageError(await readErrorMessage(response, "Could not start maintenance."));
         closeDialog();
         return;
       }
@@ -294,16 +293,14 @@ export function QuartersPage({
         body: JSON.stringify({ remark: dialogRemark }),
       });
       if (!response.ok) {
-        const data = await response.json();
-        setPageError(data.error ?? "Could not complete maintenance.");
+        setPageError(await readErrorMessage(response, "Could not complete maintenance."));
         closeDialog();
         return;
       }
     } else if (pendingAction.type === "maintenance-delete") {
       const response = await fetch(`/api/maintenance/${pendingAction.id}`, { method: "DELETE" });
       if (!response.ok) {
-        const data = await response.json();
-        setPageError(data.error ?? "Could not delete this maintenance record.");
+        setPageError(await readErrorMessage(response, "Could not delete this maintenance record."));
         closeDialog();
         return;
       }
@@ -338,8 +335,7 @@ export function QuartersPage({
       body: JSON.stringify({ condition }),
     });
     if (!response.ok) {
-      const data = await response.json();
-      setPageError(data.error ?? "Could not update condition.");
+      setPageError(await readErrorMessage(response, "Could not update condition."));
       return;
     }
     router.refresh();

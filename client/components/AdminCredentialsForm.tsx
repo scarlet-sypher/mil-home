@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FormField } from "@/client/components/FormField";
 import { PasswordInput } from "@/client/components/PasswordInput";
+import { readErrorMessage } from "@/client/lib/safe-json";
 
 const PASSWORD_RULES = [
   { label: "At least 10 characters", test: (v: string) => v.length >= 10 },
@@ -51,8 +52,7 @@ export function AdminCredentialsForm({
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      setError(data.error ?? "Something went wrong.");
+      setError(await readErrorMessage(response));
       setSubmitting(false);
       return;
     }

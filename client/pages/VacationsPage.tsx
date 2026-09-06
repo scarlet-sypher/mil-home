@@ -8,6 +8,7 @@ import { DataTable } from "@/client/components/DataTable";
 import { StatusBadge } from "@/client/components/StatusBadge";
 import { RemarkCell } from "@/client/components/RemarkCell";
 import { SearchableSelect } from "@/client/components/SearchableSelect";
+import { readErrorMessage } from "@/client/lib/safe-json";
 
 type OccupancyPair = { quarterId: number; quarterNo: string; colony: string; applicantId: number; name: string; serviceNo: string };
 type VacationApplicant = { serviceNo: string; rank: string; name: string; unit: string };
@@ -62,8 +63,7 @@ export function VacationsPage({
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      setError(data.error ?? "Something went wrong.");
+      setError(await readErrorMessage(response));
       setSubmitting(false);
       return;
     }

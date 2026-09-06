@@ -1,4 +1,5 @@
 import { handleListVacations, handleCreateVacation } from "@/server/controllers/vacation.controller";
+import { withErrorHandling } from "@/server/lib/api-error-handler";
 
-export const GET = handleListVacations;
-export const POST = handleCreateVacation;
+export const GET = withErrorHandling(handleListVacations);
+export const POST = withErrorHandling(handleCreateVacation);

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FormField } from "@/client/components/FormField";
 import { PasswordInput } from "@/client/components/PasswordInput";
+import { readErrorMessage } from "@/client/lib/safe-json";
 
 type Tab = "login" | "signup";
 
@@ -35,8 +36,7 @@ function LoginForm() {
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      setError(data.error ?? "Something went wrong.");
+      setError(await readErrorMessage(response));
       setSubmitting(false);
       return;
     }
@@ -104,8 +104,7 @@ function SignupForm({ onSuccess }: { onSuccess: () => void }) {
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      setError(data.error ?? "Something went wrong.");
+      setError(await readErrorMessage(response));
       setSubmitting(false);
       return;
     }

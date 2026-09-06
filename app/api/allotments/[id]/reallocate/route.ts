@@ -1,3 +1,4 @@
 import { handleReallocateAllotment } from "@/server/controllers/allotment.controller";
+import { withErrorHandling } from "@/server/lib/api-error-handler";
 
-export const POST = handleReallocateAllotment;
+export const POST = withErrorHandling(handleReallocateAllotment);

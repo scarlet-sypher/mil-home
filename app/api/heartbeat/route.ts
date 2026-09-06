@@ -1,2 +1,3 @@
 import { handlePostHeartbeat } from "@/server/controllers/heartbeat.controller";
-export const POST = handlePostHeartbeat;
+import { withErrorHandling } from "@/server/lib/api-error-handler";
+export const POST = withErrorHandling(handlePostHeartbeat);
